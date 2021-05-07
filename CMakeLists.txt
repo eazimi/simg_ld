@@ -10,6 +10,8 @@ project(${PROJECT} LANGUAGES CXX C)
 
 set(SOURCES 
     ./src/main.cpp
+    ./src/ulexec.h
+    ./src/ulexec.cpp
     )
 
 add_executable(${PROJECT} ${SOURCES})
