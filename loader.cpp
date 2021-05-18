@@ -38,8 +38,6 @@ const char *colors[] = {KNRM, KRED, KBLU, KGRN, KYEL};
             __LINE__ __VA_OPT__(, ) __VA_ARGS__);                         \
   } while (0)
 
-typedef char *VA; /* VA = virtual address */
-
 #define PAGE_SIZE 0x1000LL
 
 // FIXME: 0x1000 is one page; Use sysconf(PAGESIZE) instead.
@@ -56,11 +54,6 @@ typedef char *VA; /* VA = virtual address */
 // to the entry point of ld.so
 void Loader::runRtld(int argc, char **argv)
 {
-  int rc = -1;
-
-  // Pointer to the ld.so entry point
-  void *ldso_entrypoint = nullptr;
-
   // Load RTLD (ld.so)
   if (argc < 2)
   {
@@ -69,6 +62,7 @@ void Loader::runRtld(int argc, char **argv)
   }
 
   // setup lower-half info including cuda APIs function pointers
+  int rc = -1;
   rc = setupLowerHalfInfo();
   if (rc < 0)
   {
@@ -76,12 +70,9 @@ void Loader::runRtld(int argc, char **argv)
     exit(-1);
   }
 
-  void *ld_so_addr = nullptr;
-  int ld_so_fd;
-  Elf64_Addr cmd_entry, ld_so_entry;
+  Elf64_Addr cmd_entry;
   char elf_interpreter[MAX_ELF_INTERP_SZ];
-
-  get_elf_interpreter(argv[1], &cmd_entry, elf_interpreter, ld_so_addr);
+  get_elf_interpreter(argv[1], &cmd_entry, elf_interpreter);
 
   if (!elf_interpreter)
   {
@@ -89,48 +80,36 @@ void Loader::runRtld(int argc, char **argv)
     return;
   }
 
-  DynObjInfo_t ldso = safeLoadLib(elf_interpreter);
-  // if (ldso.baseAddr == nullptr || ldso.entryPoint == nullptr)
-  // {
-  //   DLOG(ERROR, "Error loading the runtime loader (%s). Exiting...\n", elf_interpreter);
-  //   return;
-  // }
+  void *ld_so_addr = (void *)0x7ffff7dd7000; // let's give it a fixed place
+  DynObjInfo_t ldso = safeLoadLib(elf_interpreter, ld_so_addr, cmd_entry);
+  if (ldso.baseAddr == nullptr || ldso.entryPoint == nullptr)
+  {
+    DLOG(ERROR, "Error loading the runtime loader (%s). Exiting...\n", elf_interpreter);
+    return;
+  }
 
   DLOG(INFO, "New ld.so loaded at: %p\n", ldso.baseAddr);
-  // ldso_entrypoint = getEntryPoint(ldso);
 
-  // // Create new stack region to be used by RTLD
-  // void *newStack = createNewStackForRtld(&ldso);
-  // if (!newStack)
-  // {
-  //     DLOG(ERROR, "Error creating new stack for RTLD. Exiting...\n");
-  //     exit(-1);
-  // }
-  // DLOG(INFO, "New stack start at: %p\n", newStack);
+  // Pointer to the ld.so entry point
+  void *ldso_entrypoint = ldso.entryPoint;
 
-  // // Create new heap region to be used by RTLD
-  // void *newHeap = createNewHeapForRtld(&ldso);
-  // if (!newHeap)
-  // {
-  //     DLOG(ERROR, "Error creating new heap for RTLD. Exiting...\n");
-  //     exit(-1);
-  // }
-  // DLOG(INFO, "New heap mapped at: %p\n", newHeap);
+  // Create new stack region to be used by RTLD
+  void *newStack = createNewStackForRtld(&ldso);
+  if (!newStack)
+  {
+    DLOG(ERROR, "Error creating new stack for RTLD. Exiting...\n");
+    exit(-1);
+  }
+  DLOG(INFO, "New stack start at: %p\n", newStack);
 
-  // // insert a trampoline from ldso mmap address to mmapWrapper
-  // rc = insertTrampoline(ldso.mmapAddr, (void *)&mmapWrapper);
-  // if (rc < 0)
-  // {
-  //     DLOG(ERROR, "Error inserting trampoline for mmap. Exiting...\n");
-  //     exit(-1);
-  // }
-  // // insert a trampoline from ldso sbrk address to sbrkWrapper
-  // rc = insertTrampoline(ldso.sbrkAddr, (void *)&sbrkWrapper);
-  // if (rc < 0)
-  // {
-  //     DLOG(ERROR, "Error inserting trampoline for sbrk. Exiting...\n");
-  //     exit(-1);
-  // }
+  // Create new heap region to be used by RTLD
+  void *newHeap = createNewHeapForRtld(&ldso);
+  if (!newHeap)
+  {
+      DLOG(ERROR, "Error creating new heap for RTLD. Exiting...\n");
+      exit(-1);
+  }
+  DLOG(INFO, "New heap mapped at: %p\n", newHeap);
 
   // // Everything is ready, let's set up the lower-half info struct for the upper
   // // half to read from
@@ -153,54 +132,520 @@ void Loader::runRtld(int argc, char **argv)
   //              : "memory");
 }
 
-DynObjInfo_t Loader::safeLoadLib(const char *name)
+// This function allocates a new heap for (the possibly second) ld.so.
+// The initial heap size is 1 page
+//
+// Returns the start address of the new heap on success, or NULL on
+// failure.
+void* Loader::createNewHeapForRtld(const DynObjInfo_t *info)
 {
-  void *ld_so_addr = nullptr;
-  DynObjInfo_t info = {0};
+  const uint64_t heapSize = 100 * PAGE_SIZE;
 
+  // We go through the mmap wrapper function to ensure that this gets added
+  // to the list of upper half regions to be checkpointed.
+  void *addr = mmapWrapper(0, heapSize, PROT_READ | PROT_WRITE,
+                           MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+  if (addr == MAP_FAILED) {
+    DLOG(ERROR, "Failed to mmap region. Error: %s\n",
+         strerror(errno));
+    return NULL;
+  }
+  // Add a guard page before the start of heap; this protects
+  // the heap from getting merged with a "previous" region.
+  mprotect(addr, PAGE_SIZE, PROT_NONE);
+  __curbrk = ((void*)((VA)addr + PAGE_SIZE));
+  __endOfHeap = (void*)ROUND_UP((void*)((VA)addr + heapSize));
+  return addr;
+}
+
+/* Read non-null character, return null if EOF */
+char Loader::readChar(int fd)
+{
+  char c;
+  int rc;
+
+  do
+  {
+    rc = read(fd, &c, 1);
+  } while (rc == -1 && errno == EINTR);
+  if (rc <= 0)
+    return 0;
+  return c;
+}
+
+/* Read decimal number, return value and terminating character */
+char Loader::readDec(int fd, VA *value)
+{
+  char c;
+  unsigned long int v = 0;
+
+  while (1)
+  {
+    c = readChar(fd);
+    if ((c >= '0') && (c <= '9'))
+      c -= '0';
+    else
+      break;
+    v = v * 10 + c;
+  }
+  *value = (VA)v;
+  return c;
+}
+
+/* Read decimal number, return value and terminating character */
+char Loader::readHex(int fd, VA *virt_mem_addr)
+{
+  char c;
+  unsigned long int v = 0;
+
+  while (1)
+  {
+    c = readChar(fd);
+    if ((c >= '0') && (c <= '9'))
+      c -= '0';
+    else if ((c >= 'a') && (c <= 'f'))
+      c -= 'a' - 10;
+    else if ((c >= 'A') && (c <= 'F'))
+      c -= 'A' - 10;
+    else
+      break;
+    v = v * 16 + c;
+  }
+  *virt_mem_addr = (VA)v;
+  return c;
+}
+
+int Loader::readMapsLine(int mapsfd, Area *area)
+{
+  char c, rflag, sflag, wflag, xflag;
+  int i;
+  off_t offset;
+  unsigned int long devmajor, devminor, inodenum;
+  VA startaddr, endaddr;
+
+  c = readHex(mapsfd, &startaddr);
+  if (c != '-')
+  {
+    if ((c == 0) && (startaddr == 0))
+      return (0);
+    goto skipeol;
+  }
+  c = readHex(mapsfd, &endaddr);
+  if (c != ' ')
+    goto skipeol;
+  if (endaddr < startaddr)
+    goto skipeol;
+
+  rflag = c = readChar(mapsfd);
+  if ((c != 'r') && (c != '-'))
+    goto skipeol;
+  wflag = c = readChar(mapsfd);
+  if ((c != 'w') && (c != '-'))
+    goto skipeol;
+  xflag = c = readChar(mapsfd);
+  if ((c != 'x') && (c != '-'))
+    goto skipeol;
+  sflag = c = readChar(mapsfd);
+  if ((c != 's') && (c != 'p'))
+    goto skipeol;
+
+  c = readChar(mapsfd);
+  if (c != ' ')
+    goto skipeol;
+
+  c = readHex(mapsfd, (VA *)&offset);
+  if (c != ' ')
+    goto skipeol;
+  area->offset = offset;
+
+  c = readHex(mapsfd, (VA *)&devmajor);
+  if (c != ':')
+    goto skipeol;
+  c = readHex(mapsfd, (VA *)&devminor);
+  if (c != ' ')
+    goto skipeol;
+  c = readDec(mapsfd, (VA *)&inodenum);
+  area->name[0] = '\0';
+  while (c == ' ')
+    c = readChar(mapsfd);
+  if (c == '/' || c == '[')
+  { /* absolute pathname, or [stack], [vdso], etc. */
+    i = 0;
+    do
+    {
+      area->name[i++] = c;
+      if (i == sizeof area->name)
+        goto skipeol;
+      c = readChar(mapsfd);
+    } while (c != '\n');
+    area->name[i] = '\0';
+  }
+
+  if (c != '\n')
+    goto skipeol;
+
+  area->addr = startaddr;
+  area->endAddr = endaddr;
+  area->size = endaddr - startaddr;
+  area->prot = 0;
+  if (rflag == 'r')
+    area->prot |= PROT_READ;
+  if (wflag == 'w')
+    area->prot |= PROT_WRITE;
+  if (xflag == 'x')
+    area->prot |= PROT_EXEC;
+  area->flags = MAP_FIXED;
+  if (sflag == 's')
+    area->flags |= MAP_SHARED;
+  if (sflag == 'p')
+    area->flags |= MAP_PRIVATE;
+  if (area->name[0] == '\0')
+    area->flags |= MAP_ANONYMOUS;
+
+  area->devmajor = devmajor;
+  area->devminor = devminor;
+  area->inodenum = inodenum;
+  return (1);
+
+skipeol:
+  fprintf(stderr, "ERROR: readMapsLine*: bad maps line <%c", c);
+  while ((c != '\n') && (c != '\0'))
+  {
+    c = readChar(mapsfd);
+    printf("%c", c);
+  }
+  printf(">\n");
+  abort();
+  return 0; /* NOTREACHED : stop compiler warning */
+}
+
+// Returns the [stack] area by reading the proc maps
+void Loader::getStackRegion(Area *stack) // OUT
+{
+  Area area;
+  int mapsfd = open("/proc/self/maps", O_RDONLY);
+  while (readMapsLine(mapsfd, &area))
+  {
+    if (strstr(area.name, "[stack]") && area.endAddr >= (VA)&area)
+    {
+      *stack = area;
+      break;
+    }
+  }
+  close(mapsfd);
+}
+
+// Returns the /proc/self/stat entry in the out string (of length len)
+void Loader::getProcStatField(enum Procstat_t type, char *out, size_t len)
+{
+  const char *procPath = "/proc/self/stat";
+  char sbuf[1024] = {0};
+  int field_counter = 0;
+  char *field_str = nullptr;
+  int fd, num_read;
+
+  fd = open(procPath, O_RDONLY);
+  if (fd < 0)
+  {
+    DLOG(ERROR, "Failed to open %s. Error: %s\n", procPath, strerror(errno));
+    return;
+  }
+
+  num_read = read(fd, sbuf, sizeof sbuf - 1);
+  close(fd);
+  if (num_read <= 0)
+    return;
+  sbuf[num_read] = '\0';
+
+  field_str = strtok(sbuf, " ");
+  while (field_str && field_counter != type)
+  {
+    field_str = strtok(nullptr, " ");
+    field_counter++;
+  }
+
+  if (field_str)
+  {
+    strncpy(out, field_str, len);
+  }
+  else
+  {
+    DLOG(ERROR, "Failed to parse %s.\n", procPath);
+  }
+}
+
+// This function does three things:
+//  1. Creates a new stack region to be used for initialization of RTLD (ld.so)
+//  2. Deep copies the original stack (from the kernel) in the new stack region
+//  3. Returns a pointer to the beginning of stack in the new stack region
+void *Loader::createNewStackForRtld(const DynObjInfo_t *info)
+{
+  Area stack;
+  char stackEndStr[20] = {0};
+  getStackRegion(&stack);
+
+  // 1. Allocate new stack region
+  // We go through the mmap wrapper function to ensure that this gets added
+  // to the list of upper half regions to be checkpointed.
+  void *newStack = mmapWrapper(nullptr, stack.size, PROT_READ | PROT_WRITE,
+                               MAP_GROWSDOWN | MAP_PRIVATE | MAP_ANONYMOUS,
+                               -1, 0);
+  if (newStack == MAP_FAILED)
+  {
+    DLOG(ERROR, "Failed to mmap new stack region: %s\n", strerror(errno));
+    return nullptr;
+  }
+  DLOG(INFO, "New stack mapped at: %p\n", newStack);
+
+  // 3. Get pointer to the beginning of the stack in the new stack region
+  // The idea here is to look at the beginning of stack in the original
+  // stack region, and use that to index into the new memory region. The
+  // same offsets are valid in both the stack regions.
+  getProcStatField(STARTSTACK, stackEndStr, sizeof stackEndStr);
+
+  // NOTE: The kernel sets up the stack in the following format.
+  //      -1(%rsp)                       Stack end for application
+  //      0(%rsp)                        argc (Stack start for application)
+  //      LP_SIZE(%rsp)                  argv[0]
+  //      (2*LP_SIZE)(%rsp)              argv[1]
+  //      ...
+  //      (LP_SIZE*(argc))(%rsp)         NULL
+  //      (LP_SIZE*(argc+1))(%rsp)       envp[0]
+  //      (LP_SIZE*(argc+2))(%rsp)       envp[1]
+  //      ...
+  //                                     NULL
+  //
+  // NOTE: proc-stat returns the address of argc on the stack.
+  // argv[0] is 1 LP_SIZE ahead of argc, i.e., startStack + sizeof(void*)
+  // Stack End is 1 LP_SIZE behind argc, i.e., startStack - sizeof(void*)
+  // sizeof(unsigned long) == sizeof(void*) == 8 on x86-64
+  unsigned long origStackEnd = atol(stackEndStr) - sizeof(unsigned long);
+  unsigned long origStackOffset = origStackEnd - (unsigned long)stack.addr;
+  unsigned long newStackOffset = origStackOffset;
+  void *newStackEnd = (void *)((unsigned long)newStack + newStackOffset);
+
+  printf("origStack: %lu origStackOffset: %lu OrigStackEnd: %lu \n", (unsigned long)stack.addr, (unsigned long)origStackOffset, (unsigned long)origStackEnd);
+  printf("newStack: %lu newStackOffset: %lu newStackEnd: %lu \n", (unsigned long)newStack, (unsigned long)newStackOffset, (unsigned long)newStackEnd);
+
+  // 2. Deep copy stack
+  newStackEnd = deepCopyStack(newStack, stack.addr, stack.size,
+                              (void *)newStackEnd, (void *)origStackEnd,
+                              info);
+
+  return newStackEnd;
+}
+
+void* Loader::GET_ARGC_ADDR(const void* stackEnd)
+{
+  return (void*)((uintptr_t)(stackEnd) + sizeof(uintptr_t));
+}
+
+// Returns pointer to argv[0], given a pointer to end of stack
+void* Loader::GET_ARGV_ADDR(const void* stackEnd)
+{
+  return (void*)((unsigned long)(stackEnd) + 2 * sizeof(uintptr_t));
+}
+
+// Returns pointer to env[0], given a pointer to end of stack
+void* Loader::GET_ENV_ADDR(char **argv, int argc)
+{
+  return (void*)&argv[argc + 1];
+}
+
+// Returns a pointer to aux vector, given a pointer to the environ vector
+// on the stack
+ElfW(auxv_t)* Loader::GET_AUXV_ADDR(const char **env)
+{
+  ElfW(auxv_t) *auxvec;
+  const char **evp = env;
+  while (*evp++ != nullptr);
+  auxvec = (ElfW(auxv_t) *) evp;
+  return auxvec;
+}
+
+// Creates a deep copy of the stack region pointed to be `origStack` at the
+// location pointed to be `newStack`. Returns the start-of-stack pointer
+// in the new stack region.
+void *Loader::deepCopyStack(void *newStack, const void *origStack, size_t len,
+                            const void *newStackEnd, const void *origStackEnd,
+                            const DynObjInfo_t *info)
+{
+  // This function assumes that this env var is set.
+  assert(getenv("TARGET_LD"));
+  assert(getenv("UH_PRELOAD"));
+
+  // Return early if any pointer is NULL
+  if (!newStack || !origStack ||
+      !newStackEnd || !origStackEnd ||
+      !info)
+  {
+    return nullptr;
+  }
+
+  // First, we do a shallow copy, which is essentially, just copying the
+  // bits from the original stack into the new stack.
+  memcpy(newStack, origStack, len);
+
+  // Next, turn the shallow copy into a deep copy.
+  //
+  // The main thing we need to do is to patch the argv and env vectors in
+  // the new stack to point to addresses in the new stack region. Note that
+  // the argv and env are simply arrays of pointers. The pointers point to
+  // strings in other locations in the stack.
+
+  void *origArgcAddr = (void *)GET_ARGC_ADDR(origStackEnd);
+  int origArgc = *(int *)origArgcAddr;
+  char **origArgv = (char **)GET_ARGV_ADDR(origStackEnd);
+  const char **origEnv = (const char **)GET_ENV_ADDR(origArgv, origArgc);
+
+  void *newArgcAddr = (void *)GET_ARGC_ADDR(newStackEnd);
+  int newArgc = *(int *)newArgcAddr;
+  char **newArgv = (char **)GET_ARGV_ADDR(newStackEnd);
+  const char **newEnv = (const char **)GET_ENV_ADDR(newArgv, newArgc);
+  ElfW(auxv_t) *newAuxv = GET_AUXV_ADDR(newEnv);
+
+  // Patch the argv vector in the new stack
+  //   First, set up the argv vector based on the original stack
+  for (int i = 0; origArgv[i] != nullptr; i++)
+  {
+    off_t argvDelta = (uintptr_t)origArgv[i] - (uintptr_t)origArgv;
+    newArgv[i] = (char *)((uintptr_t)newArgv + (uintptr_t)argvDelta);
+  }
+
+  //   Next, we patch argv[0], the first argument, on the new stack
+  //   to point to "/path/to/ld.so".
+  //
+  //   From the point of view of ld.so, it would appear as if it was called
+  //   like this: $ /lib/ld.so /path/to/target.exe app-args ...
+  //
+  //   NOTE: The kernel loader needs to be called with at least two arguments
+  //   to get a stack that is 16-byte aligned at the start. Since we want to
+  //   be able to jump into ld.so with at least two arguments (ld.so and the
+  //   target exe) on the new stack, we also need two arguments on the
+  //   original stack.
+  //
+  //   If the original stack had just one argument, we would have inherited
+  //   that alignment in the new stack. Trying to push in another argument
+  //   (target exe) on the new stack would destroy the 16-byte alignment
+  //   on the new stack. This would lead to a crash later on in ld.so.
+  //
+  //   The problem is that there are instructions (like, "movaps") in ld.so's
+  //   code that operate on the stack memory region and require their
+  //   operands to be 16-byte aligned. A non-16-byte-aligned operand (for
+  //   example, the stack base pointer) leads to a general protection
+  //   exception (#GP), which translates into a segfault for the user
+  //   process.
+  //
+  //   The Linux kernel ensures that the start of stack is always 16-byte
+  //   aligned. It seems like this is part of the Linux kernel x86-64 ABI.
+  //   For example, see here:
+  //
+  //     https://elixir.bootlin.com/linux/v4.18.11/source/fs/binfmt_elf.c#L150
+  //
+  //     https://elixir.bootlin.com/linux/v4.18.11/source/fs/binfmt_elf.c#L288
+  //
+  //   (The kernel uses the STACK_ROUND macro to first set up the stack base
+  //    at a 16-byte aligned address, and then pushes items on the stack.)
+  //
+  //   We could do something similar on the new stack region. But perhaps it's
+  //   easier to just depend on the original stack having at least two args:
+  //   "/path/to/kernel-loader" and "/path/to/target.exe".
+  //
+  //   NOTE: We don't need to patch newArgc, since the original stack,
+  //   from where we would have inherited the data in the new stack, already
+  //   had the correct value for origArgc. We just make argv[0] in the
+  //   new stack to point to "/path/to/ld.so", instead of
+  //   "/path/to/kernel-loader".
+  off_t argvDelta = (uintptr_t)getenv("TARGET_LD") - (uintptr_t)origArgv;
+  newArgv[0] = (char *)((uintptr_t)newArgv + (uintptr_t)argvDelta);
+
+  // Patch the env vector in the new stack
+  for (int i = 0; origEnv[i] != nullptr; i++)
+  {
+    off_t envDelta = (uintptr_t)origEnv[i] - (uintptr_t)origEnv;
+    newEnv[i] = (char *)((uintptr_t)newEnv + (uintptr_t)envDelta);
+  }
+
+  // Change "UH_PRELOAD" to "LD_PRELOAD". This way, upper half's ld.so
+  // will preload the upper half wrapper library.
+  char **newEnvPtr = (char **)newEnv;
+  for (; *newEnvPtr; newEnvPtr++)
+  {
+    if (strstr(*newEnvPtr, "UH_PRELOAD"))
+    {
+      (*newEnvPtr)[0] = 'L';
+      (*newEnvPtr)[1] = 'D';
+      break;
+    }
+  }
+
+  // The aux vector, which we would have inherited from the original stack,
+  // has entries that correspond to the kernel loader binary. In particular,
+  // it has these entries AT_PHNUM, AT_PHDR, and AT_ENTRY that correspond
+  // to kernel-loader. So, we atch the aux vector in the new stack to
+  // correspond to the new binary: the freshly loaded ld.so.
+  patchAuxv(newAuxv, info->phnum,
+            (uintptr_t)info->phdr,
+            (uintptr_t)info->entryPoint);
+
+  printf("newArgv[-2]: %lu \n", (unsigned long)&newArgv[0]);
+
+  // We clear out the rest of the new stack region just in case ...
+  memset(newStack, 0, (size_t)((uintptr_t)&newArgv[-2] - (uintptr_t)newStack));
+
+  // Return the start of new stack.
+  return (void *)newArgcAddr;
+}
+
+// Given a pointer to aux vector, parses the aux vector, and patches the
+// following three entries: AT_PHDR, AT_ENTRY, and AT_PHNUM
+void Loader::patchAuxv(ElfW(auxv_t) *av, unsigned long phnum,
+          unsigned long phdr, unsigned long entry)
+{
+  for (; av->a_type != AT_NULL; ++av) {
+    switch (av->a_type) {
+      case AT_PHNUM:
+        av->a_un.a_val = phnum;
+        break;
+      case AT_PHDR:
+        av->a_un.a_val = phdr;
+        break;
+      case AT_ENTRY:
+        av->a_un.a_val = entry;
+        break;
+      case AT_RANDOM:
+        DLOG(NOISE, "AT_RANDOM value: 0%lx\n", av->a_un.a_val);
+        break;
+      default:
+        break;
+    }
+  }
+}
+
+DynObjInfo_t Loader::safeLoadLib(const char *name, void *ld_so_addr, const Elf64_Addr &cmd_entry)
+{
+  DynObjInfo_t info = {0};
   int ld_so_fd;
-  Elf64_Addr cmd_entry, ld_so_entry;
   ld_so_fd = open(name, O_RDONLY);
   assert(ld_so_fd != -1);
-  info.baseAddr = load_elf_interpreter(ld_so_fd, name, &ld_so_entry, ld_so_addr, &info);
+  info.baseAddr = load_elf_interpreter(ld_so_fd, ld_so_addr, &info);
   off_t mmap_offset;
   off_t sbrk_offset;
-  // #if UBUNTU
-  //   char buf[256] = "/usr/lib/debug";
-  //   buf[sizeof(buf) - 1] = '\0';
-  //   ssize_t rc = 0;
-  //   rc = readlink(elf_interpreter, buf + strlen(buf), sizeof(buf) - strlen(buf) - 1);
-  //   if (rc != -1 && access(buf, F_OK) == 0)
-  //   {
-  //     // Debian family (Ubuntu, etc.) use this scheme to store debug symbols.
-  //     //   http://sourceware.org/gdb/onlinedocs/gdb/Separate-Debug-Files.html
-  //     fprintf(stderr, "Debug symbols for interpreter in: %s\n", buf);
-  //   }
-  //   printf("%s\n", buf);
-  //   int debug_ld_so_fd = open(buf, O_RDONLY);
-  //   assert(debug_ld_so_fd != -1);
-  //   mmap_offset = get_symbol_offset(debug_ld_so_fd, buf, "mmap");
-  //   sbrk_offset = get_symbol_offset(debug_ld_so_fd, buf, "sbrk");
-  //   close(debug_ld_so_fd);
-  // #else
-  //   mmap_offset = get_symbol_offset(ld_so_fd, name, "mmap");
-  //   sbrk_offset = get_symbol_offset(ld_so_fd, name, "sbrk");
-  // #endif
-  //   assert(mmap_offset);
-  //   assert(sbrk_offset);
-  //   info.mmapAddr = (VA)info.baseAddr + mmap_offset;
-  //   info.sbrkAddr = (VA)info.baseAddr + sbrk_offset;
-  //   // FIXME: The ELF Format manual says that we could pass the ld_so_fd to ld.so,
-  //   //   and it would use that to load it.
-  //   close(ld_so_fd);
-  //   info.entryPoint = (void *)((unsigned long)info.baseAddr +
-  //                              (unsigned long)cmd_entry);
+
+  mmap_offset = get_symbol_offset(ld_so_fd, name, "mmap");
+  sbrk_offset = get_symbol_offset(ld_so_fd, name, "sbrk");
+  assert(mmap_offset);
+  assert(sbrk_offset);
+
+  info.mmapAddr = (VA)info.baseAddr + mmap_offset;
+  info.sbrkAddr = (VA)info.baseAddr + sbrk_offset;
+
+  close(ld_so_fd);
+  info.entryPoint = (void *)((unsigned long)info.baseAddr + (unsigned long)cmd_entry);
   return info;
 }
 
-void *Loader::load_elf_interpreter(int fd, const char *elf_interpreter,
-                                   Elf64_Addr *ld_so_entry, void *ld_so_addr,
-                                   DynObjInfo_t *info)
+void *Loader::load_elf_interpreter(int fd, void *ld_so_addr, DynObjInfo_t *info)
 {
   char e_ident[EI_NIDENT];
   int rc;
@@ -284,13 +729,11 @@ void *Loader::map_elf_interpreter_load_segment(int fd, Elf64_Phdr phdr, void *ld
     size = 0x27000;
   }
   else
-  {
     flags |= MAP_FIXED;
-  }
+
   if (ld_so_addr)
-  {
     flags |= MAP_FIXED;
-  }
+
   // FIXME:  On first load segment, we should map 0x400000 (2*phdr.p_align),
   //         and then unmap the unused portions later after all the
   //         LOAD segments are mapped.  This is what ld.so would do.
@@ -343,7 +786,7 @@ void *Loader::map_elf_interpreter_load_segment(int fd, Elf64_Phdr phdr, void *ld
   return base_address;
 }
 
-void Loader::get_elf_interpreter(char *name, Elf64_Addr *cmd_entry, char *elf_interpreter, void *ld_so_addr)
+void Loader::get_elf_interpreter(char *name, Elf64_Addr *cmd_entry, char *elf_interpreter)
 {
   int rc;
   char e_ident[EI_NIDENT];
@@ -449,4 +892,72 @@ int Loader::writeLhInfoToFile()
   }
   close(fd);
   return rc;
+}
+
+// Returns offset of symbol, or -1 on failure.
+off_t Loader::get_symbol_offset(int fd, const char *ldname, const char *symbol)
+{
+  int i;
+  ssize_t rc;
+  Elf64_Shdr sect_hdr;
+  Elf64_Shdr symtab;
+  Elf64_Sym symtab_entry;
+  // FIXME: This needs to be dynamic
+  char strtab[100000];
+
+  int symtab_found = 0;
+
+  // Reset fd to beginning and parse file header
+  lseek(fd, 0, SEEK_SET);
+  Elf64_Ehdr elf_hdr;
+  rc = read(fd, &elf_hdr, sizeof(elf_hdr));
+  assert(rc == sizeof(elf_hdr));
+
+  // Get start of symbol table and string table
+  Elf64_Off shoff = elf_hdr.e_shoff;
+  lseek(fd, shoff, SEEK_SET);
+  for (i = 0; i < elf_hdr.e_shnum; i++)
+  {
+    rc = read(fd, &sect_hdr, sizeof sect_hdr);
+    assert(rc == sizeof(sect_hdr));
+    if (sect_hdr.sh_type == SHT_SYMTAB)
+    {
+      symtab = sect_hdr;
+      symtab_found = 1;
+    }
+    if (sect_hdr.sh_type == SHT_STRTAB)
+    {
+      int fd2 = open(ldname, O_RDONLY);
+      lseek(fd2, sect_hdr.sh_offset, SEEK_SET);
+      if (sect_hdr.sh_size > sizeof(strtab))
+      {
+        DLOG(ERROR, "sect_hdr.sh_size =  %zu, sizeof(strtab) = %zu\n",
+             sect_hdr.sh_size, sizeof(strtab));
+        assert(0);
+      }
+      assert(sect_hdr.sh_size = read(fd2, strtab, sect_hdr.sh_size));
+      close(fd2);
+    }
+  }
+
+  if (!symtab_found)
+  {
+    DLOG(ERROR, "Failed to find symbol table in %s\n", ldname);
+    return -1;
+  }
+
+  // Move to beginning of symbol table
+  lseek(fd, symtab.sh_offset, SEEK_SET);
+  for (; lseek(fd, 0, SEEK_CUR) - symtab.sh_offset < symtab.sh_size;)
+  {
+    rc = read(fd, &symtab_entry, sizeof symtab_entry);
+    assert(rc == sizeof(symtab_entry));
+    if (strcmp(strtab + symtab_entry.st_name, symbol) == 0)
+    {
+      // found address as offset from base address
+      return symtab_entry.st_value;
+    }
+  }
+  DLOG(ERROR, "Failed to find symbol (%s) in %s\n", symbol, ldname);
+  return -1;
 }
