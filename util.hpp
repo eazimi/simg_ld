@@ -1,3 +1,6 @@
+#ifndef UTIL_HPP
+#define UTIL_HPP
+
 #include <sys/syscall.h>
 #include <sys/mman.h>
 
@@ -37,7 +40,7 @@ public:
 
 long Util::err = 0;
 
-void * Util::memcpy(void *dest, const void *src, unsigned long n)
+void *Util::memcpy(void *dest, const void *src, unsigned long n)
 {
 	unsigned long i;
 	unsigned char *d = (unsigned char *)dest;
@@ -452,3 +455,4 @@ void Util::copy_in(char *filename, void *address)
 	linux_close(fd);
 }
 
+#endif

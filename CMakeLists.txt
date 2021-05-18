@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.5)
 message(STATUS "Cmake version ${CMAKE_MAJOR_VERSION}.${CMAKE_MINOR_VERSION}.${CMAKE_PATCH_VERSION}")
-set(CMAKE_CXX_COMPILER "/usr/bin/g++-10.3")
+set(CMAKE_CXX_COMPILER "/usr/bin/g++")
 
 set(CMAKE_FIND_LIBRARY_SUFFIXES ".a")
 set(BUILD_SHARED_LIBS OFF)
@@ -15,6 +15,10 @@ set(SOURCES
     ulexec.h
     ulexec.cpp
     util.hpp
+    loader.cpp
+    loader.h
+    switch_context.h
+    switch_context.cpp
     )
 
 add_executable(${PROJECT} ${SOURCES})
