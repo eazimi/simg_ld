@@ -108,8 +108,8 @@ void CUlexec::release_args(void *args)
 
 void CUlexec::ulexec(int ac, char **av, char **env)
 {
-	// auto trim_args = 1;
-	auto trim_args = 0;
+	auto trim_args = 1;
+	// auto trim_args = 0;
 	char file_to_map[MAX_PATH];
 	// strcpy(file_to_map, (char *)"/usr/bin/ls");
 	strcpy(file_to_map, av[1]);
@@ -137,8 +137,8 @@ void CUlexec::ulexec(int ac, char **av, char **env)
 
 	Elf64_Ehdr *ldso_ehdr;
 	void *entry_point;
-	// entry_point = load_elf(mapped, how_to_map, &elf_ehdr, &ldso_ehdr);
 	void *offset = Util::linux_mmap(nullptr, HALF_G, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+	// offset = nullptr;
 	entry_point = load_elf((long int)offset, mapped, how_to_map, &elf_ehdr, &ldso_ehdr);
 	Util::linux_munmap(mapped, mapped_sz);
 
@@ -365,7 +365,7 @@ void *CUlexec::load_elf(unsigned long offset, void *mapped, int anywhere, Elf64_
 
 		if (first_time)
 		{
-			map_addr = map_addr + offset;
+			map_addr = ALIGNDOWN((unsigned long)(map_addr + offset), 0x1000);
 			first_time = false;
 		}
 
@@ -420,6 +420,7 @@ void *CUlexec::load_elf(unsigned long offset, void *mapped, int anywhere, Elf64_
 		unsigned long sz_dummy;
 		void *interp_mapped = map_file(&(((char *)mapped)[interp->p_offset]), &sz_dummy);
 		void *offset = Util::linux_mmap(nullptr, HALF_G, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+		// offset = nullptr;
 		entry_point = load_elf((long int)offset, interp_mapped, 1, ldso_ehdr, &junk_ehdr);
 	}
 
