@@ -89,7 +89,7 @@ void Loader::runRtld(int argc, char **argv)
   }
 
   // Load RTLD (ld.so)
-  char *ldname  = "/lib64/ld-linux-x86-64.so.2";
+  char *ldname  = (char*)"/lib64/ld-linux-x86-64.so.2";
   DynObjInfo_t ldso = safeLoadLib(ldname);
   if (ldso.baseAddr == NULL || ldso.entryPoint == NULL) {
     DLOG(ERROR, "Error loading the runtime loader (%s). Exiting...\n", ldname);
