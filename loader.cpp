@@ -721,10 +721,10 @@ void* Loader::load_elf_interpreter(int fd, char *elf_interpreter,
     if (phdr.p_type == PT_LOAD) {
       // PT_LOAD is the only type of loadable segment for ld.so
       if (firstTime) {
-        baseAddr = map_elf_interpreter_load_segment(fd, phdr, ld_so_addr);
+        baseAddr = map_elf_interpreter_load_segment(fd, phdr, ld_so_addr, true);
         firstTime = 0;
       } else {
-        map_elf_interpreter_load_segment(fd, phdr, ld_so_addr);
+        map_elf_interpreter_load_segment(fd, phdr, ld_so_addr, false);
       }
     }
   }
@@ -733,10 +733,9 @@ void* Loader::load_elf_interpreter(int fd, char *elf_interpreter,
   return baseAddr;
 }
 
-void *Loader::map_elf_interpreter_load_segment(int fd, Elf64_Phdr phdr, void *ld_so_addr)
+void *Loader::map_elf_interpreter_load_segment(int fd, Elf64_Phdr phdr, void *ld_so_addr, bool is_first_seg)
 {
   static char *base_address = NULL; // is NULL on call to first LOAD segment
-  static int first_time = 1;
   int prot = PROT_NONE;
   if (phdr.p_flags & PF_R)
     prot |= PROT_READ;
@@ -766,7 +765,7 @@ void *Loader::map_elf_interpreter_load_segment(int fd, Elf64_Phdr phdr, void *ld
   // phdr.p_offset = ROUND_DOWN(phdr.p_offset);
   // phdr.p_memsz = phdr.p_memsz + (vaddr - phdr.p_vaddr);
   // NOTE:  base_address is 0 for first load segment
-  if (first_time)
+  if (is_first_seg)
   {
     printf("size %d \n", (int)phdr.p_filesz);
     phdr.p_vaddr += (unsigned long long)ld_so_addr;
@@ -826,11 +825,8 @@ void *Loader::map_elf_interpreter_load_segment(int fd, Elf64_Phdr phdr, void *ld
       return NULL;
     }
   }
-  if (first_time)
-  {
-    first_time = 0;
+  if (is_first_seg)
     base_address = (char *)rc2;
-  }
   return base_address;
 }
 
