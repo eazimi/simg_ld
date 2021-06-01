@@ -12,9 +12,6 @@ project(${PROJECT} LANGUAGES CXX C)
 
 set(SOURCES 
     main.cpp
-    ulexec.h
-    ulexec.cpp
-    util.hpp
     loader.cpp
     loader.h
     switch_context.h
