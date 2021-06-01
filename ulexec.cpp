@@ -241,7 +241,7 @@ void *CUlexec::stack_setup(void *args, void *envp, void *auxvp, Elf64_Ehdr *ehdr
 	}
 
 	ptr = (unsigned long *)ROUNDUP((unsigned long)addr, sizeof(unsigned long));
-	*ptr = 0;
+	*ptr++ = 0;
 
 	/* Copy envp strings onto stack */
 	addr = (char *)ptr;
@@ -256,7 +256,7 @@ void *CUlexec::stack_setup(void *args, void *envp, void *auxvp, Elf64_Ehdr *ehdr
 	}
 
 	ptr = (unsigned long *)ROUNDUP((unsigned long)addr, sizeof(unsigned long));
-	*ptr = 0;
+	*ptr++ = 0;
 
 	/* Executable name at top of stack */
 	if (excfn)
@@ -269,6 +269,7 @@ void *CUlexec::stack_setup(void *args, void *envp, void *auxvp, Elf64_Ehdr *ehdr
 		*addr++ = *str++; /* ASCII Nul */
 
 		ptr = (unsigned long *)ROUNDUP((unsigned long)addr, sizeof(unsigned long));
+		*ptr = 0;
 	}
 
 	release_args(args);

@@ -428,10 +428,10 @@ void Util::error_msg(char *msg)
 {
     char buf[32];
     print_string(1, msg);
-    print_string(1, " ");
+    print_string(1, (char*)" ");
     to_decimal(err, buf);
     print_string(1, buf);
-    print_string(1, "\n");
+    print_string(1, (char*)"\n");
 }
 
 void Util::copy_in(char *filename, void *address)
@@ -442,7 +442,7 @@ void Util::copy_in(char *filename, void *address)
 
 	if (0 > (fd = linux_open(filename, 0, 0)))
 	{
-		error_msg("opening dynamically-loaded file failed");
+		error_msg((char*)"opening dynamically-loaded file failed");
 		linux_exit(2);
 	}
 
