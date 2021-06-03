@@ -146,6 +146,7 @@ private:
     void* __sbrkWrapper(intptr_t increment);
     int insertTrampoline(void *from_addr, void *to_addr);
     void* getEntryPoint(DynObjInfo_t info);
+    unsigned long getStackPtr();
     
     LowerHalfInfo_t lhInfo;
     void *__curbrk;
