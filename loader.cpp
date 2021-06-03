@@ -690,6 +690,34 @@ DynObjInfo_t Loader::safeLoadLib(const char *name)
   return info;
 }
 
+void Loader::setLhMemRange()
+{
+  const uint64_t ONE_GB = 0x40000000;
+  const uint64_t TWO_GB = 0x80000000;
+  Area area;
+  bool found = false;
+  int mapsfd = open("/proc/self/maps", O_RDONLY);
+  if (mapsfd < 0)
+  {
+    DLOG(ERROR, "Failed to open proc maps\n");
+    return;
+  }
+  while (readMapsLine(mapsfd, &area))
+  {
+    if (strstr(area.name, "[stack]"))
+    {
+      found = true;
+      break;
+    }
+  }
+  close(mapsfd);
+  if (found && g_range == nullptr)
+  {
+    g_range->start = (VA)area.addr - TWO_GB;
+    g_range->end = (VA)area.addr - ONE_GB;
+  }
+}
+
 // Returns the address of argc on the stack
 unsigned long Loader::getStackPtr()
 {

@@ -111,6 +111,12 @@ typedef struct __MmapInfo
   size_t len;
 } MmapInfo_t;
 
+typedef struct __MemRange
+{
+  void *start;
+  void *end;
+} MemRange_t;
+
 class Loader
 {
 public:
@@ -147,11 +153,13 @@ private:
     int insertTrampoline(void *from_addr, void *to_addr);
     void* getEntryPoint(DynObjInfo_t info);
     unsigned long getStackPtr();
+    void setLhMemRange();
     
     LowerHalfInfo_t lhInfo;
     void *__curbrk;
     void *__endOfHeap = 0;
     std::vector<MmapInfo_t> mmaps {};
+    MemRange_t *g_range = nullptr;
 };
 
 #endif
