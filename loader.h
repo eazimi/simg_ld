@@ -5,6 +5,7 @@
 #include <stdio.h>
 #include <link.h>
 #include <vector>
+#include <memory>
 
 typedef struct __DynObjInfo
 {
@@ -153,13 +154,14 @@ private:
     int insertTrampoline(void *from_addr, void *to_addr);
     void* getEntryPoint(DynObjInfo_t info);
     unsigned long getStackPtr();
+    void initializeLowerHalf();
     void setLhMemRange();
     
     LowerHalfInfo_t lhInfo;
     void *__curbrk;
     void *__endOfHeap = 0;
     std::vector<MmapInfo_t> mmaps {};
-    MemRange_t *g_range = nullptr;
+    std::unique_ptr<MemRange_t> g_range = nullptr;
 };
 
 #endif

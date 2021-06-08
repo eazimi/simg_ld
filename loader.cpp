@@ -89,6 +89,14 @@ void Loader::runRtld(int argc, char **argv)
     exit(-1);
   }
 
+  ////////////////////////////////////////////////////////////////
+  // make lower half
+  ////////////////////////////////////////////////////////////////
+  
+  initializeLowerHalf();
+  
+  ////////////////////////////////////////////////////////////////
+
   // Load RTLD (ld.so)
   char *ldname  = (char*)"/lib64/ld-linux-x86-64.so.2";
   DynObjInfo_t ldso = safeLoadLib(ldname);
@@ -690,6 +698,53 @@ DynObjInfo_t Loader::safeLoadLib(const char *name)
   return info;
 }
 
+void Loader::initializeLowerHalf()
+{
+  bool lh_initialized = false;
+  // proc-stat returns the address of argc on the stack.
+  unsigned long argcAddr = getStackPtr();
+  
+  // argv[0] is 1 LP_SIZE ahead of argc, i.e., startStack + sizeof(void*)
+  // Stack End is 1 LP_SIZE behind argc, i.e., startStack - sizeof(void*)
+  void *stack_end = (void*)(argcAddr - sizeof(unsigned long));
+  int argc = *(int*)argcAddr;
+  char **argv = (char**)(argcAddr + sizeof(unsigned long));
+  char **ev = &argv[argc + 1];
+  
+  // libcFptr_t fnc = (libcFptr_t)info.libc_start_main;
+  // pdlsym = (proxyDlsym_t)info.lh_dlsym;
+  // resetMmappedList_t resetMaps = (resetMmappedList_t)info.resetMmappedListFptr;
+
+  // Copied from glibc source
+  ElfW(auxv_t) * auxvec;
+  char **evp = ev;
+  while (*evp++ != NULL);
+  auxvec = (ElfW(auxv_t) *)evp;
+
+  setLhMemRange();
+  void *region = mmapWrapper(g_range->start, (unsigned long)g_range->end - (unsigned long)g_range->start, PROT_READ | PROT_WRITE,
+                             MAP_GROWSDOWN | MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+  if (region == MAP_FAILED)
+  {
+    DLOG(ERROR, "Failed to mmap region: %s\n", strerror(errno));
+  }
+
+  // JUMP_TO_LOWER_HALF(info.fsaddr);
+  // resetMaps();
+  // patchAuxv(auxvec, info.lh_AT_PHNUM, info.lh_AT_PHDR, 1);
+  // JWARNING(getcontext((ucontext_t*)info.g_appContext) == 0)(JASSERT_ERRNO);
+
+  // if (!lh_initialized) {
+  //   lh_initialized = true;
+  //   fnc((mainFptr)info.main, argc, argv,
+  //       (mainFptr)info.libc_csu_init,
+  //       (finiFptr)info.libc_csu_fini, 0, stack_end);
+  // }
+  // DLOG(INFO, "After getcontext\n");
+  // patchAuxv(auxvec, 0, 0, 0);
+  // RETURN_TO_UPPER_HALF();
+}
+
 void Loader::setLhMemRange()
 {
   const uint64_t ONE_GB = 0x40000000;
@@ -711,7 +766,10 @@ void Loader::setLhMemRange()
     }
   }
   close(mapsfd);
-  if (found && g_range == nullptr)
+  if(g_range == nullptr)
+    g_range = std::make_unique<MemRange_t>();
+  // if (found && (g_range == nullptr))
+  if (found)
   {
     g_range->start = (VA)area.addr - TWO_GB;
     g_range->end = (VA)area.addr - ONE_GB;
