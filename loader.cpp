@@ -60,12 +60,12 @@ const char *colors[] = {KNRM, KRED, KBLU, KGRN, KYEL};
 #define esi rsi
 #define edi rdi
 #define esp rsp
-#define CLEAN_FOR_64_BIT_HELPER(args ...) # args
-#define CLEAN_FOR_64_BIT(args ...)        CLEAN_FOR_64_BIT_HELPER(args)
+#define CLEAN_FOR_64_BIT_HELPER(args...) #args
+#define CLEAN_FOR_64_BIT(args...) CLEAN_FOR_64_BIT_HELPER(args)
 
 // This function returns the entry point of the ld.so executable given
 // the library handle
-void* Loader::getEntryPoint(DynObjInfo_t info)
+void *Loader::getEntryPoint(DynObjInfo_t info)
 {
   return info.entryPoint;
 }
@@ -92,7 +92,7 @@ void Loader::runRtld(int argc, char **argv)
   ////////////////////////////////////////////////////////////////
   // make lower half
   ////////////////////////////////////////////////////////////////
-  
+
   initializeLowerHalf();
   lockFreeSpots();
 
@@ -100,14 +100,15 @@ void Loader::runRtld(int argc, char **argv)
   ////////////////////////////////////////////////////////////////
 
   // Load RTLD (ld.so)
-  char *ldname  = (char*)"/lib64/ld-linux-x86-64.so.2";
+  char *ldname = (char *)"/lib64/ld-linux-x86-64.so.2";
   DynObjInfo_t ldso = safeLoadLib(ldname);
-  if (ldso.baseAddr == NULL || ldso.entryPoint == NULL) {
+  if (ldso.baseAddr == NULL || ldso.entryPoint == NULL)
+  {
     DLOG(ERROR, "Error loading the runtime loader (%s). Exiting...\n", ldname);
     return;
   }
   DLOG(INFO, "New ld.so loaded at: %p\n", ldso.baseAddr);
-  
+
   // Pointer to the ld.so entry point
   void *ldso_entrypoint = getEntryPoint(ldso);
 
@@ -682,7 +683,7 @@ DynObjInfo_t Loader::safeLoadLib(const char *name)
   ld_so_fd = open(elf_interpreter, O_RDONLY);
   assert(ld_so_fd != -1);
   info.baseAddr = load_elf_interpreter(ld_so_fd, elf_interpreter,
-                                        &ld_so_entry, ld_so_addr, &info);
+                                       &ld_so_entry, ld_so_addr, &info);
   off_t mmap_offset;
   off_t sbrk_offset;
   mmap_offset = get_symbol_offset(ld_so_fd, name, "mmap");
@@ -695,8 +696,8 @@ DynObjInfo_t Loader::safeLoadLib(const char *name)
   // FIXME: The ELF Format manual says that we could pass the ld_so_fd to ld.so,
   //   and it would use that to load it.
   close(ld_so_fd);
-  info.entryPoint = (void*)((unsigned long)info.baseAddr +
-                            (unsigned long)cmd_entry);
+  info.entryPoint = (void *)((unsigned long)info.baseAddr +
+                             (unsigned long)cmd_entry);
   return info;
 }
 
@@ -739,14 +740,14 @@ void Loader::initializeLowerHalf()
   bool lh_initialized = false;
   // proc-stat returns the address of argc on the stack.
   unsigned long argcAddr = getStackPtr();
-  
+
   // argv[0] is 1 LP_SIZE ahead of argc, i.e., startStack + sizeof(void*)
   // Stack End is 1 LP_SIZE behind argc, i.e., startStack - sizeof(void*)
-  void *stack_end = (void*)(argcAddr - sizeof(unsigned long));
-  int argc = *(int*)argcAddr;
-  char **argv = (char**)(argcAddr + sizeof(unsigned long));
+  void *stack_end = (void *)(argcAddr - sizeof(unsigned long));
+  int argc = *(int *)argcAddr;
+  char **argv = (char **)(argcAddr + sizeof(unsigned long));
   char **ev = &argv[argc + 1];
-  
+
   // libcFptr_t fnc = (libcFptr_t)info.libc_start_main;
   // pdlsym = (proxyDlsym_t)info.lh_dlsym;
   // resetMmappedList_t resetMaps = (resetMmappedList_t)info.resetMmappedListFptr;
@@ -754,7 +755,8 @@ void Loader::initializeLowerHalf()
   // Copied from glibc source
   ElfW(auxv_t) * auxvec;
   char **evp = ev;
-  while (*evp++ != NULL);
+  while (*evp++ != NULL)
+    ;
   auxvec = (ElfW(auxv_t) *)evp;
 
   setLhMemRange();
@@ -802,7 +804,7 @@ void Loader::setLhMemRange()
     }
   }
   close(mapsfd);
-  if(g_range == nullptr)
+  if (g_range == nullptr)
     g_range = std::make_unique<MemRange_t>();
   // if (found && (g_range == nullptr))
   if (found)
@@ -891,9 +893,9 @@ unsigned long Loader::getStackPtr()
   return startstack;
 }
 
-void* Loader::load_elf_interpreter(int fd, char *elf_interpreter,
-                     Elf64_Addr *ld_so_entry, void *ld_so_addr,
-                     DynObjInfo_t *info)
+void *Loader::load_elf_interpreter(int fd, char *elf_interpreter,
+                                   Elf64_Addr *ld_so_entry, void *ld_so_addr,
+                                   DynObjInfo_t *info)
 {
   char e_ident[EI_NIDENT];
   int rc;
@@ -902,7 +904,7 @@ void* Loader::load_elf_interpreter(int fd, char *elf_interpreter,
 
   rc = read(fd, e_ident, sizeof(e_ident));
   assert(rc == sizeof(e_ident));
-  assert(strncmp(e_ident, ELFMAG, sizeof(ELFMAG)-1) == 0);
+  assert(strncmp(e_ident, ELFMAG, sizeof(ELFMAG) - 1) == 0);
   // FIXME:  Add support for 32-bit ELF later
   assert(e_ident[EI_CLASS] == ELFCLASS64);
 
@@ -917,15 +919,20 @@ void* Loader::load_elf_interpreter(int fd, char *elf_interpreter,
   Elf64_Phdr phdr;
   int i;
   lseek(fd, phoff, SEEK_SET);
-  for (i = 0; i < elf_hdr.e_phnum; i++ ) {
+  for (i = 0; i < elf_hdr.e_phnum; i++)
+  {
     rc = read(fd, &phdr, sizeof(phdr)); // Read consecutive program headers
     assert(rc == sizeof(phdr));
-    if (phdr.p_type == PT_LOAD) {
+    if (phdr.p_type == PT_LOAD)
+    {
       // PT_LOAD is the only type of loadable segment for ld.so
-      if (firstTime) {
+      if (firstTime)
+      {
         baseAddr = map_elf_interpreter_load_segment(fd, phdr, ld_so_addr, true);
         firstTime = 0;
-      } else {
+      }
+      else
+      {
         map_elf_interpreter_load_segment(fd, phdr, ld_so_addr, false);
       }
     }
@@ -1061,7 +1068,6 @@ void Loader::get_elf_interpreter(int fd, Elf64_Addr *cmd_entry, char *elf_interp
     rc = read(fd, &phdr, sizeof(phdr)); // Read consecutive program headers
     assert(rc == sizeof(phdr));
   }
-
 }
 
 void *Loader::mmapWrapper(void *addr, size_t length, int prot, int flags, int fd, off_t offset)
