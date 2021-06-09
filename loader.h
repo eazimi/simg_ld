@@ -155,6 +155,7 @@ private:
     void* getEntryPoint(DynObjInfo_t info);
     unsigned long getStackPtr();
     void initializeLowerHalf();
+    void lockFreeSpots();
     void setLhMemRange();
     
     LowerHalfInfo_t lhInfo;
@@ -162,6 +163,7 @@ private:
     void *__endOfHeap = 0;
     std::vector<MmapInfo_t> mmaps {};
     std::unique_ptr<MemRange_t> g_range = nullptr;
+    std::vector<MemRange_t> mmaps_range {};
 };
 
 #endif

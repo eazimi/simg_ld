@@ -94,7 +94,9 @@ void Loader::runRtld(int argc, char **argv)
   ////////////////////////////////////////////////////////////////
   
   initializeLowerHalf();
-  
+  lockFreeSpots();
+
+
   ////////////////////////////////////////////////////////////////
 
   // Load RTLD (ld.so)
@@ -696,6 +698,40 @@ DynObjInfo_t Loader::safeLoadLib(const char *name)
   info.entryPoint = (void*)((unsigned long)info.baseAddr +
                             (unsigned long)cmd_entry);
   return info;
+}
+
+void Loader::lockFreeSpots()
+{
+  mmaps_range.clear();
+  Area area;
+  int mapsfd = open("/proc/self/maps", O_RDONLY);
+  while (readMapsLine(mapsfd, &area))
+  {
+    // check if required to add this condition: (area.endAddr >= (VA)&area)
+    MemRange_t range;
+    range.start = area.addr;
+    range.end = area.endAddr;
+    mmaps_range.push_back(std::move(range));
+  }
+  close(mapsfd);
+
+  for (auto i = 1; i <= mmaps_range.size(); i++)
+  {
+    if(strstr(area.name, "[vsyscall]"))
+      continue;
+    auto start_mmap = (unsigned long)(mmaps_range[i - 1].end);
+    auto length = (unsigned long)(mmaps_range[i].start) - start_mmap;
+    if(length == 0)
+      continue;
+    void *mmap_ret = mmap((void *)start_mmap, length, PROT_NONE, MAP_PRIVATE | MAP_ANONYMOUS | MAP_FIXED, -1, 0);
+    if (mmap_ret == MAP_FAILED)
+    {
+      // if(errno == ENOMEM)
+      //   DLOG(ERROR, "ENOMEM\n");  
+      DLOG(ERROR, "failed to lock the free spot. %s\n", strerror(errno));
+      // exit(-1);
+    }
+  }
 }
 
 void Loader::initializeLowerHalf()
