@@ -156,6 +156,7 @@ private:
     unsigned long getStackPtr();
     void initializeLowerHalf();
     void lockFreeAreas();
+    void unlockArea();
     void setLhMemRange();
     
     LowerHalfInfo_t lhInfo;

@@ -95,6 +95,7 @@ void Loader::runRtld(int argc, char **argv)
 
   initializeLowerHalf();
   lockFreeAreas();
+  unlockArea();
 
 
   ////////////////////////////////////////////////////////////////
@@ -701,8 +702,11 @@ DynObjInfo_t Loader::safeLoadLib(const char *name)
   return info;
 }
 
-void Loader::lockFreeSpots()
+void Loader::unlockArea()
 {
+  munmap(g_range->start, (unsigned long)g_range->end - (unsigned long)g_range->start);
+}
+
 void Loader::lockFreeAreas()
 {  
   mmaps_range.clear();
