@@ -82,12 +82,12 @@ void Loader::runRtld(int argc, char **argv)
 
   // // setup lower-half info including cuda APIs function pointers
   int rc = -1;
-  rc = setupLowerHalfInfo();
-  if (rc < 0)
-  {
-    DLOG(ERROR, "Failed to set up lhinfo for the upper half. Exiting...\n");
-    exit(-1);
-  }
+  // rc = setupLowerHalfInfo();
+  // if (rc < 0)
+  // {
+  //   DLOG(ERROR, "Failed to set up lhinfo for the upper half. Exiting...\n");
+  //   exit(-1);
+  // }
 
   ////////////////////////////////////////////////////////////////
   // make lower half
@@ -147,12 +147,12 @@ void Loader::runRtld(int argc, char **argv)
 
   // Everything is ready, let's set up the lower-half info struct for the upper
   // half to read from
-  rc = setupLowerHalfInfo();
-  if (rc < 0)
-  {
-    DLOG(ERROR, "Failed to set up lhinfo for the upper half. Exiting...\n");
-    exit(-1);
-  }
+  // rc = setupLowerHalfInfo();
+  // if (rc < 0)
+  // {
+  //   DLOG(ERROR, "Failed to set up lhinfo for the upper half. Exiting...\n");
+  //   exit(-1);
+  // }
 
   // Change the stack pointer to point to the new stack and jump into ld.so
   // TODO: Clean up all the registers?
