@@ -94,7 +94,7 @@ void Loader::runRtld(int argc, char **argv)
   ////////////////////////////////////////////////////////////////
 
   initializeLowerHalf();
-  lockFreeSpots();
+  lockFreeAreas();
 
 
   ////////////////////////////////////////////////////////////////
@@ -703,28 +703,46 @@ DynObjInfo_t Loader::safeLoadLib(const char *name)
 
 void Loader::lockFreeSpots()
 {
+void Loader::lockFreeAreas()
+{  
   mmaps_range.clear();
   Area area;
   int mapsfd = open("/proc/self/maps", O_RDONLY);
+  bool firstLine = true;
+  MemRange_t range;
   while (readMapsLine(mapsfd, &area))
-  {
-    // check if required to add this condition: (area.endAddr >= (VA)&area)
-    MemRange_t range;
-    range.start = area.addr;
-    range.end = area.endAddr;
+  { 
+    // todo: check if required to add this condition: (area.endAddr >= (VA)&area)       
+    if(firstLine)
+    {
+      range.start = area.endAddr;
+      firstLine = false;
+      continue;
+    }
+    range.end = area.addr;
     mmaps_range.push_back(std::move(range));
+    range.start = area.endAddr;    
   }
   close(mapsfd);
 
-  for (auto i = 1; i <= mmaps_range.size(); i++)
+  mmaps_range.pop_back();
+
+  // for(auto j=0; j<mmaps_range.size(); j++)
+  // {
+  //   std::cout << "mmaps_range[" << j << "]: " << 
+  //     std::hex << mmaps_range[j].start << " - " << std::hex << mmaps_range[j].end << "    " << std::hex <<
+  //     (unsigned long)mmaps_range[j].end - (unsigned long)mmaps_range[j].start << std::endl; 
+  // }  
+
+  auto mmaps_size = mmaps_range.size()-1;
+  for (auto i = 0; i <= mmaps_size; i++)
   {
-    if(strstr(area.name, "[vsyscall]"))
-      continue;
-    auto start_mmap = (unsigned long)(mmaps_range[i - 1].end);
-    auto length = (unsigned long)(mmaps_range[i].start) - start_mmap;
+    auto start_mmap = (unsigned long)(mmaps_range[i].start);
+    auto length = (unsigned long)(mmaps_range[i].end) - start_mmap;
     if(length == 0)
       continue;
-    void *mmap_ret = mmap((void *)start_mmap, length, PROT_NONE, MAP_PRIVATE | MAP_ANONYMOUS | MAP_FIXED, -1, 0);
+    // std::cout << "before mmap: i = " << i << "    start_mmap = " << start_mmap << "    length = " << length << std::endl;
+    void *mmap_ret = mmap((void *)start_mmap, length, PROT_NONE, MAP_PRIVATE | MAP_ANONYMOUS | MAP_FIXED, -1, 0);    
     if (mmap_ret == MAP_FAILED)
     {
       // if(errno == ENOMEM)
@@ -732,7 +750,10 @@ void Loader::lockFreeSpots()
       DLOG(ERROR, "failed to lock the free spot. %s\n", strerror(errno));
       // exit(-1);
     }
+    // std::cout << "after mmap: i = " << i << std::endl;
   }
+
+  // std::cout << "all mmaps_range[] handled" << std::endl;
 }
 
 void Loader::initializeLowerHalf()

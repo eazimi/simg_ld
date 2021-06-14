@@ -155,7 +155,7 @@ private:
     void* getEntryPoint(DynObjInfo_t info);
     unsigned long getStackPtr();
     void initializeLowerHalf();
-    void lockFreeSpots();
+    void lockFreeAreas();
     void setLhMemRange();
     
     LowerHalfInfo_t lhInfo;
