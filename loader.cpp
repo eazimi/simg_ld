@@ -1032,7 +1032,11 @@ void *Loader::map_elf_interpreter_load_segment(int fd, Elf64_Phdr phdr, void *ld
   // FIXME:  On first load segment, we should map 0x400000 (2*phdr.p_align),
   //         and then unmap the unused portions later after all the
   //         LOAD segments are mapped.  This is what ld.so would do.
+
+  std::cout << "in map_elf_interpreter_load_segment() - before mmapWrapper() call: addr = " << std::hex << addr << std::endl;
   rc2 = mmapWrapper((void *)addr, size, prot, flags, fd, offset);
+  std::cout << "in map_eld_interpreter_load_segment() - after mmapWrapper() call: MAP_FAILED = " << (rc2 == MAP_FAILED) << std::endl;
+
   if (rc2 == MAP_FAILED)
   {
     DLOG(ERROR, "Failed to map memory region at %p. Error:%s\n",
