@@ -158,6 +158,7 @@ private:
     void lockFreeAreas();
     void unlockArea();
     void setLhMemRange();
+    void printMappedAreas();
     
     LowerHalfInfo_t lhInfo;
     void *__curbrk;

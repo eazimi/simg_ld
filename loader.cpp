@@ -11,6 +11,7 @@
 #include <errno.h>
 #include <asm/prctl.h>
 #include <syscall.h>
+#include <fstream>
 #include "switch_context.h"
 #include "limits.h"
 
@@ -97,6 +98,7 @@ void Loader::runRtld(int argc, char **argv)
   lockFreeAreas();
   unlockArea();
 
+  printMappedAreas();
 
   ////////////////////////////////////////////////////////////////
 
@@ -806,6 +808,20 @@ void Loader::initializeLowerHalf()
   // DLOG(INFO, "After getcontext\n");
   // patchAuxv(auxvec, 0, 0, 0);
   // RETURN_TO_UPPER_HALF();
+}
+
+void Loader::printMappedAreas()
+{
+  std::string maps_path = "/proc/self/maps";
+  std::filebuf fb;
+  std::string line;
+  if(fb.open(maps_path, std::ios_base::in))
+  {
+    std::istream is(&fb);
+    while (std::getline(is, line))
+      std::cout << line.substr(0, line.find(" ")) << std::endl; 
+    fb.close();
+  }
 }
 
 void Loader::setLhMemRange()
