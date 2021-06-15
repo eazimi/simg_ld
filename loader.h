@@ -129,6 +129,7 @@ private:
     DynObjInfo_t safeLoadLib(const char *name);
     void* load_elf_interpreter(int fd, char *elf_interpreter, Elf64_Addr *ld_so_entry, void *ld_so_addr, DynObjInfo_t *info);
     void *map_elf_interpreter_load_segment(int fd, Elf64_Phdr phdr, void *ld_so_addr, bool is_first_seg);
+    unsigned long map_elf_interpreter_load_segment(int fd, Elf64_Ehdr *ehdr, Elf64_Phdr *phdr);
     void *mmapWrapper(void *addr, size_t length, int prot, int flags, int fd, off_t offset);
     void* sbrkWrapper(intptr_t increment);
     int setupLowerHalfInfo();
