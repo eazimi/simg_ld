@@ -1064,8 +1064,10 @@ unsigned long Loader::map_elf_interpreter_load_segment(int fd, Elf64_Ehdr *ehdr,
 	return (unsigned long)base;
 }
 
+void* Loader::map_elf_interpreter_load_segment(int fd, Elf64_Phdr phdr, void *ld_so_addr)
 {
   static char *base_address = NULL; // is NULL on call to first LOAD segment
+  static int first_time = 1;
   int prot = PROT_NONE;
   if (phdr.p_flags & PF_R)
     prot |= PROT_READ;
@@ -1080,8 +1082,7 @@ unsigned long Loader::map_elf_interpreter_load_segment(int fd, Elf64_Ehdr *ehdr,
   // are not written out to the file.
   void *rc2;
   // Check ELF Format constraint:
-  if (phdr.p_align > 1)
-  {
+  if (phdr.p_align > 1) {
     assert(phdr.p_vaddr % phdr.p_align == phdr.p_offset % phdr.p_align);
   }
   int vaddr = phdr.p_vaddr;
@@ -1095,40 +1096,32 @@ unsigned long Loader::map_elf_interpreter_load_segment(int fd, Elf64_Ehdr *ehdr,
   // phdr.p_offset = ROUND_DOWN(phdr.p_offset);
   // phdr.p_memsz = phdr.p_memsz + (vaddr - phdr.p_vaddr);
   // NOTE:  base_address is 0 for first load segment
-  if (is_first_seg)
-  {
-    printf("size %d \n", (int)phdr.p_filesz);
+  if (first_time) {
+	  printf("size %d \n", (int)phdr.p_filesz);
     phdr.p_vaddr += (unsigned long long)ld_so_addr;
     size = 0x27000;
-  }
-  else
-  {
+  } else {
     flags |= MAP_FIXED;
   }
-  if (ld_so_addr)
-  {
+  if (ld_so_addr) {
     flags |= MAP_FIXED;
   }
   // FIXME:  On first load segment, we should map 0x400000 (2*phdr.p_align),
   //         and then unmap the unused portions later after all the
   //         LOAD segments are mapped.  This is what ld.so would do.
-
-  std::cout << "in map_elf_interpreter_load_segment() - before mmapWrapper() call: addr = " << std::hex << addr << std::endl;
+  std::cout << "map_elf_interpreter_load_segment(), addr: " << std::hex << addr << std::endl;
   rc2 = mmapWrapper((void *)addr, size, prot, flags, fd, offset);
-  std::cout << "in map_eld_interpreter_load_segment() - after mmapWrapper() call: MAP_FAILED = " << (rc2 == MAP_FAILED) << std::endl;
-
-  if (rc2 == MAP_FAILED)
-  {
+  std::cout << "map_elf_interpreter_load_segment(), MAP_FAILED: " << (rc2 == MAP_FAILED) << std::endl;
+  if (rc2 == MAP_FAILED) {
     DLOG(ERROR, "Failed to map memory region at %p. Error:%s\n",
-         (void *)addr, strerror(errno));
+         (void*)addr, strerror(errno));
     return NULL;
   }
   unsigned long startBss = (uintptr_t)base_address +
-                           phdr.p_vaddr + phdr.p_filesz;
+                          phdr.p_vaddr + phdr.p_filesz;
   unsigned long endBss = (uintptr_t)base_address + phdr.p_vaddr + phdr.p_memsz;
   // Required by ELF Format:
-  if (phdr.p_memsz > phdr.p_filesz)
-  {
+  if (phdr.p_memsz > phdr.p_filesz) {
     // This condition is true for the RW (data) segment of ld.so
     // We need to clear out the rest of memory contents, similarly to
     // what the kernel would do. See here:
@@ -1140,29 +1133,132 @@ unsigned long Loader::map_elf_interpreter_load_segment(int fd, Elf64_Ehdr *ehdr,
     // Next, figure out the number of bytes we need to clear out.
     // From Bss to the end of page.
     size_t bytes = endByte - startBss;
-    memset((void *)startBss, 0, bytes);
+    memset((void*)startBss, 0, bytes);
   }
   // If there's more bss that overflows to another page, map it in and
   // zero it out
-  startBss = ROUND_UP(startBss);
-  endBss = ROUND_UP(endBss);
-  if (endBss > startBss)
-  {
-    void *base = (void *)startBss;
+  startBss  = ROUND_UP(startBss);
+  endBss    = ROUND_UP(endBss);
+  if (endBss > startBss) {
+    void *base = (void*)startBss;
     size_t len = endBss - startBss;
     flags |= MAP_ANONYMOUS; // This should give us 0-ed out pages
     rc2 = mmapWrapper(base, len, prot, flags, -1, 0);
-    if (rc2 == MAP_FAILED)
-    {
+    if (rc2 == MAP_FAILED) {
       DLOG(ERROR, "Failed to map memory region at %p. Error:%s\n",
-           (void *)startBss, strerror(errno));
+           (void*)startBss, strerror(errno));
       return NULL;
     }
   }
-  if (is_first_seg)
+  if (first_time) {
+    first_time = 0;
     base_address = (char *)rc2;
+    // base_address = (char*)((unsigned long)rc2 + (unsigned long)(g_range->start));
+  }
   return base_address;
 }
+
+// void *Loader::map_elf_interpreter_load_segment(int fd, Elf64_Phdr phdr, void *ld_so_addr, bool is_first_seg)
+// {
+//   static char *base_address = NULL; // is NULL on call to first LOAD segment
+//   int prot = PROT_NONE;
+//   if (phdr.p_flags & PF_R)
+//     prot |= PROT_READ;
+//   if (phdr.p_flags & PF_W)
+//     prot |= PROT_WRITE;
+//   if (phdr.p_flags & PF_X)
+//     prot |= PROT_EXEC;
+//   assert(phdr.p_memsz >= phdr.p_filesz);
+//   // NOTE:  man mmap says:
+//   // For a file that is not a  multiple  of  the  page  size,  the
+//   // remaining memory is zeroed when mapped, and writes to that region
+//   // are not written out to the file.
+//   void *rc2;
+//   // Check ELF Format constraint:
+//   if (phdr.p_align > 1)
+//   {
+//     assert(phdr.p_vaddr % phdr.p_align == phdr.p_offset % phdr.p_align);
+//   }
+//   int vaddr = phdr.p_vaddr;
+
+//   int flags = MAP_PRIVATE;
+//   unsigned long addr = ROUND_DOWN(base_address + vaddr);
+//   size_t size = ROUND_UP(phdr.p_filesz + PAGE_OFFSET(phdr.p_vaddr));
+//   off_t offset = phdr.p_offset - PAGE_OFFSET(phdr.p_vaddr);
+
+//   // phdr.p_vaddr = ROUND_DOWN(phdr.p_vaddr);
+//   // phdr.p_offset = ROUND_DOWN(phdr.p_offset);
+//   // phdr.p_memsz = phdr.p_memsz + (vaddr - phdr.p_vaddr);
+//   // NOTE:  base_address is 0 for first load segment
+//   if (is_first_seg)
+//   {
+//     printf("size %d \n", (int)phdr.p_filesz);
+//     phdr.p_vaddr += (unsigned long long)ld_so_addr;
+//     size = 0x27000;
+//   }
+//   else
+//   {
+//     flags |= MAP_FIXED;
+//   }
+//   if (ld_so_addr)
+//   {
+//     flags |= MAP_FIXED;
+//   }
+  
+//   // FIXME:  On first load segment, we should map 0x400000 (2*phdr.p_align),
+//   //         and then unmap the unused portions later after all the
+//   //         LOAD segments are mapped.  This is what ld.so would do.
+
+//   std::cout << "in map_elf_interpreter_load_segment() - before mmapWrapper() call: addr = " << std::hex << addr << std::endl;
+//   rc2 = mmapWrapper((void *)addr, size, prot, flags, fd, offset);
+//   std::cout << "in map_eld_interpreter_load_segment() - after mmapWrapper() call: MAP_FAILED = " << (rc2 == MAP_FAILED) << std::endl;
+
+//   if (rc2 == MAP_FAILED)
+//   {
+//     DLOG(ERROR, "Failed to map memory region at %p. Error:%s\n",
+//          (void *)addr, strerror(errno));
+//     return NULL;
+//   }
+//   unsigned long startBss = (uintptr_t)base_address +
+//                            phdr.p_vaddr + phdr.p_filesz;
+//   unsigned long endBss = (uintptr_t)base_address + phdr.p_vaddr + phdr.p_memsz;
+//   // Required by ELF Format:
+//   if (phdr.p_memsz > phdr.p_filesz)
+//   {
+//     // This condition is true for the RW (data) segment of ld.so
+//     // We need to clear out the rest of memory contents, similarly to
+//     // what the kernel would do. See here:
+//     //   https://elixir.bootlin.com/linux/v4.18.11/source/fs/binfmt_elf.c#L905
+//     // Note that p_memsz indicates end of data (&_end)
+
+//     // First, get to the page boundary
+//     uintptr_t endByte = ROUND_UP(startBss);
+//     // Next, figure out the number of bytes we need to clear out.
+//     // From Bss to the end of page.
+//     size_t bytes = endByte - startBss;
+//     memset((void *)startBss, 0, bytes);
+//   }
+//   // If there's more bss that overflows to another page, map it in and
+//   // zero it out
+//   startBss = ROUND_UP(startBss);
+//   endBss = ROUND_UP(endBss);
+//   if (endBss > startBss)
+//   {
+//     void *base = (void *)startBss;
+//     size_t len = endBss - startBss;
+//     flags |= MAP_ANONYMOUS; // This should give us 0-ed out pages
+//     rc2 = mmapWrapper(base, len, prot, flags, -1, 0);
+//     if (rc2 == MAP_FAILED)
+//     {
+//       DLOG(ERROR, "Failed to map memory region at %p. Error:%s\n",
+//            (void *)startBss, strerror(errno));
+//       return NULL;
+//     }
+//   }
+//   if (is_first_seg)
+//     base_address = (char *)rc2;
+//   return base_address;
+// }
 
 void Loader::get_elf_interpreter(int fd, Elf64_Addr *cmd_entry, char *elf_interpreter, void *ld_so_addr)
 {
@@ -1181,18 +1277,18 @@ void Loader::get_elf_interpreter(int fd, Elf64_Addr *cmd_entry, char *elf_interp
   assert(rc == sizeof(elf_hdr));
   *cmd_entry = elf_hdr.e_entry;
 
-  // Find ELF interpreter
-  int i;
-  Elf64_Phdr phdr;
-  int phoff = elf_hdr.e_phoff;
+  // // Find ELF interpreter
+  // int i;
+  // Elf64_Phdr phdr;
+  // int phoff = elf_hdr.e_phoff;
 
-  lseek(fd, phoff, SEEK_SET);
-  for (i = 0; i < elf_hdr.e_phnum; i++)
-  {
-    assert(i < elf_hdr.e_phnum);
-    rc = read(fd, &phdr, sizeof(phdr)); // Read consecutive program headers
-    assert(rc == sizeof(phdr));
-  }
+  // lseek(fd, phoff, SEEK_SET);
+  // for (i = 0; i < elf_hdr.e_phnum; i++)
+  // {
+  //   assert(i < elf_hdr.e_phnum);
+  //   rc = read(fd, &phdr, sizeof(phdr)); // Read consecutive program headers
+  //   assert(rc == sizeof(phdr));
+  // }
 }
 
 void *Loader::mmapWrapper(void *addr, size_t length, int prot, int flags, int fd, off_t offset)
