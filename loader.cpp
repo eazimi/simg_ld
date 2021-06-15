@@ -949,7 +949,7 @@ void *Loader::load_elf_interpreter(int fd, char *elf_interpreter,
   char e_ident[EI_NIDENT];
   int rc;
   int firstTime = 1;
-  void *baseAddr = NULL;
+  // void *baseAddr = NULL;
 
   rc = read(fd, e_ident, sizeof(e_ident));
   assert(rc == sizeof(e_ident));
@@ -965,30 +965,41 @@ void *Loader::load_elf_interpreter(int fd, char *elf_interpreter,
 
   // Find ELF interpreter
   int phoff = elf_hdr.e_phoff;
-  Elf64_Phdr phdr;
-  int i;
+  // Elf64_Phdr phdr;
+  // int i;
   lseek(fd, phoff, SEEK_SET);
-  for (i = 0; i < elf_hdr.e_phnum; i++)
-  {
-    rc = read(fd, &phdr, sizeof(phdr)); // Read consecutive program headers
-    assert(rc == sizeof(phdr));
-    if (phdr.p_type == PT_LOAD)
-    {
-      // PT_LOAD is the only type of loadable segment for ld.so
-      if (firstTime)
-      {
-        baseAddr = map_elf_interpreter_load_segment(fd, phdr, ld_so_addr, true);
-        firstTime = 0;
-      }
-      else
-      {
-        map_elf_interpreter_load_segment(fd, phdr, ld_so_addr, false);
-      }
-    }
-  }
+  // for (i = 0; i < elf_hdr.e_phnum; i++)
+  // {
+  //   rc = read(fd, &phdr, sizeof(phdr)); // Read consecutive program headers
+  //   assert(rc == sizeof(phdr));
+  //   if (phdr.p_type == PT_LOAD)
+  //   {
+  //     // PT_LOAD is the only type of loadable segment for ld.so
+  //     if (firstTime)
+  //     {
+  //       baseAddr = map_elf_interpreter_load_segment(fd, phdr, ld_so_addr);
+  //       firstTime = 0;
+  //     }
+  //     else
+  //     {
+  //       map_elf_interpreter_load_segment(fd, phdr, ld_so_addr);
+  //     }
+  //   }
+  // }
+
+  Elf64_Phdr *phdr;
+  Elf64_Ehdr *ehdr = &elf_hdr;
+  ssize_t sz = ehdr->e_phnum * sizeof(Elf64_Phdr);
+  phdr = (Elf64_Phdr*) alloca(sz);
+
+  if (read(fd, phdr, sz) != sz)
+    DLOG(ERROR, "can't read program header");
+
+  unsigned long baseAddr = map_elf_interpreter_load_segment(fd, ehdr, phdr);
+
   info->phnum = elf_hdr.e_phnum;
   info->phdr = (VA)baseAddr + elf_hdr.e_phoff;
-  return baseAddr;
+  return (void*)baseAddr;
 }
 
 unsigned long Loader::map_elf_interpreter_load_segment(int fd, Elf64_Ehdr *ehdr, Elf64_Phdr *phdr)
