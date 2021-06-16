@@ -188,8 +188,13 @@ void *Loader::createNewHeapForRtld(const DynObjInfo_t *info)
 
   // We go through the mmap wrapper function to ensure that this gets added
   // to the list of upper half regions to be checkpointed.
-  void *addr = mmapWrapper(0, heapSize, PROT_READ | PROT_WRITE,
+
+  const uint64_t ONE_HALF_GB   = 0x60000000;
+  void *startAddr = (void*)((unsigned long)g_range->start + ONE_HALF_GB);
+
+  void *addr = mmapWrapper(startAddr /*0*/, heapSize, PROT_READ | PROT_WRITE,
                            MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+
   if (addr == MAP_FAILED)
   {
     DLOG(ERROR, "Failed to mmap region. Error: %s\n",
