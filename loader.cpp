@@ -106,7 +106,7 @@ void Loader::runRtld(int argc, char **argv)
   lockFreeAreas();
   unlockArea();
 
-  printMappedAreas();
+  // printMappedAreas();
 
   ////////////////////////////////////////////////////////////////
 
@@ -765,7 +765,7 @@ void Loader::lockFreeAreas()
     auto length = (unsigned long)(mmaps_range[i].end) - start_mmap;
     if(length == 0)
       continue;
-    // std::cout << "before mmap: i = " << i << "    start_mmap = " << start_mmap << "    length = " << length << std::endl;
+    // std::cout << "before mmap: i = " << i << "    start_mmap = " << std::hex << start_mmap << "    length = " << length << std::endl;
     void *mmap_ret = mmap((void *)start_mmap, length, PROT_NONE, MAP_PRIVATE | MAP_ANONYMOUS | MAP_FIXED, -1, 0);    
     if (mmap_ret == MAP_FAILED)
     {
