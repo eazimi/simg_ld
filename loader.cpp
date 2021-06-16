@@ -96,7 +96,7 @@ void Loader::runRtld(int argc, char **argv)
 
   // reserve some 2 GB in the address space, lock remained free areas
   reserveMemRegion();
-  lockFreeAreas();
+  lockFreeMemRegions();
   unlockArea();
   // printMappedAreas();
 
@@ -670,7 +670,7 @@ void Loader::unlockArea()
   munmap(g_range->start, (unsigned long)g_range->end - (unsigned long)g_range->start);
 }
 
-void Loader::lockFreeAreas()
+void Loader::lockFreeMemRegions()
 {  
   mmaps_range.clear();
   Area area;

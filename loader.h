@@ -155,7 +155,7 @@ private:
     void* getEntryPoint(DynObjInfo_t info);
     unsigned long getStackPtr();
     void reserveMemRegion();
-    void lockFreeAreas();
+    void lockFreeMemRegions();
     void unlockArea();
     void setLhMemRange();
     void printMappedAreas();
