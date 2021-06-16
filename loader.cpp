@@ -1008,7 +1008,7 @@ unsigned long Loader::map_elf_interpreter_load_segment(int fd, Elf64_Ehdr *ehdr,
 	Elf64_Phdr *iter;
 	ssize_t sz;
 	int flags, dyn = ehdr->e_type == ET_DYN;
-	unsigned char *p, *base, *hint;
+	unsigned char *p, *base/*, *hint*/;
 
 	minva = (unsigned long)-1;
 	maxva = 0;
@@ -1027,19 +1027,21 @@ unsigned long Loader::map_elf_interpreter_load_segment(int fd, Elf64_Ehdr *ehdr,
 	maxva = ROUND_PG(maxva);
 
 	/* For dynamic ELF let the kernel chose the address. */
-	hint = dyn ? NULL : (unsigned char *)minva;
+	// hint = dyn ? NULL : (unsigned char *)minva;
 	flags = dyn ? 0 : MAP_FIXED;
 	flags |= (MAP_PRIVATE | MAP_ANONYMOUS);
 
-  // hint += (unsigned long)g_range->start;
-
 	/* Check that we can hold the whole image. */
-	base = (unsigned char*) mmap(hint, maxva - minva, PROT_NONE, flags, -1, 0);
+	// base = (unsigned char*) mmap(hint, maxva - minva, PROT_NONE, flags, -1, 0);
+	base = (unsigned char*) mmap(g_range->start, maxva - minva, PROT_NONE, flags, -1, 0);
 	if (base == (void *)-1)
 		return -1;
 	munmap(base, maxva - minva);
 
+  // base = (unsigned char*) g_range->start;
+
 	flags = MAP_FIXED | MAP_ANONYMOUS | MAP_PRIVATE;
+	// flags = MAP_FIXED | MAP_PRIVATE;
 	/* Now map each segment separately in precalculated address. */
 	for (iter = phdr; iter < &phdr[ehdr->e_phnum]; iter++)
 	{
