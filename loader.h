@@ -150,7 +150,6 @@ private:
     void* createNewHeapForRtld(const DynObjInfo_t *info);
     void addRegionToMMaps(void *addr, size_t length);
     void* __sbrkWrapper(intptr_t increment);
-    int insertTrampoline(void *from_addr, void *to_addr);
     void* getEntryPoint(DynObjInfo_t info);
     unsigned long getStackPtr();
     void reserveMemRegion();
