@@ -834,8 +834,10 @@ void Loader::printMappedAreas()
 
 void Loader::setLhMemRange()
 {
-  const uint64_t ONE_GB = 0x40000000;
-  const uint64_t TWO_GB = 0x80000000;
+  const uint64_t ONE_GB   = 0x40000000;
+  // const uint64_t TWO_GB   = 0x80000000;
+  const uint64_t THREE_GB = 0xc0000000;
+
   Area area;
   bool found = false;
   int mapsfd = open("/proc/self/maps", O_RDONLY);
@@ -858,7 +860,8 @@ void Loader::setLhMemRange()
   // if (found && (g_range == nullptr))
   if (found)
   {
-    g_range->start = (VA)area.addr - TWO_GB;
+    // g_range->start = (VA)area.addr - TWO_GB;
+    g_range->start = (VA)area.addr - THREE_GB;
     g_range->end = (VA)area.addr - ONE_GB;
   }
 }
