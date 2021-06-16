@@ -433,7 +433,12 @@ void *Loader::createNewStackForRtld(const DynObjInfo_t *info)
   // 1. Allocate new stack region
   // We go through the mmap wrapper function to ensure that this gets added
   // to the list of upper half regions to be checkpointed.
-  void *newStack = mmapWrapper(nullptr, stack.size, PROT_READ | PROT_WRITE,
+
+  const uint64_t ONE_GB   = 0x40000000;
+  // const uint64_t ONE_HALF_GB   = 0x60000000;
+  void *startAddr = (void*)((unsigned long)g_range->start + ONE_GB);
+
+  void *newStack = mmapWrapper(startAddr /*nullptr*/, stack.size, PROT_READ | PROT_WRITE,
                                MAP_GROWSDOWN | MAP_PRIVATE | MAP_ANONYMOUS,
                                -1, 0);
   if (newStack == MAP_FAILED)
