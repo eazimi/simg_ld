@@ -97,7 +97,7 @@ void Loader::runRtld(int argc, char **argv)
   // reserve some 2 GB in the address space, lock remained free areas
   reserveMemRegion();
   lockFreeMemRegions();
-  unlockArea();
+  unlockReservedMemRegion();
   // printMappedAreas();
 
   // Load RTLD (ld.so)
@@ -665,7 +665,7 @@ DynObjInfo_t Loader::safeLoadLib(const char *name)
   return info;
 }
 
-void Loader::unlockArea()
+void Loader::unlockReservedMemRegion()
 {
   munmap(g_range->start, (unsigned long)g_range->end - (unsigned long)g_range->start);
 }

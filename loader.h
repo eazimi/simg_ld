@@ -156,7 +156,7 @@ private:
     unsigned long getStackPtr();
     void reserveMemRegion();
     void lockFreeMemRegions();
-    void unlockArea();
+    void unlockReservedMemRegion();
     void setLhMemRange();
     void printMappedAreas();
     
