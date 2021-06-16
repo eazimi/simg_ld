@@ -41,6 +41,9 @@ const char *colors[] = {KNRM, KRED, KBLU, KGRN, KYEL};
   } while (0)
 
 #define PAGE_SIZE 0x1000LL
+#define _1_GB    0x40000000
+#define _1500_MB 0x60000000
+#define _3_GB    0xc0000000
 
 // FIXME: 0x1000 is one page; Use sysconf(PAGESIZE) instead.
 #define ROUND_DOWN(x) ((unsigned long long)(x) & ~(unsigned long long)(PAGE_SIZE - 1))
@@ -89,26 +92,13 @@ void Loader::runRtld(int argc, char **argv)
     return;
   }
 
-  // // setup lower-half info including cuda APIs function pointers
   int rc = -1;
-  // rc = setupLowerHalfInfo();
-  // if (rc < 0)
-  // {
-  //   DLOG(ERROR, "Failed to set up lhinfo for the upper half. Exiting...\n");
-  //   exit(-1);
-  // }
 
-  ////////////////////////////////////////////////////////////////
-  // make lower half
-  ////////////////////////////////////////////////////////////////
-
+  // reserve some 2 GB in the address space, lock remained free areas
   initializeLowerHalf();
   lockFreeAreas();
   unlockArea();
-
   // printMappedAreas();
-
-  ////////////////////////////////////////////////////////////////
 
   // Load RTLD (ld.so)
   char *ldname = (char *)"/lib64/ld-linux-x86-64.so.2";
@@ -141,30 +131,6 @@ void Loader::runRtld(int argc, char **argv)
   }
   DLOG(INFO, "New heap mapped at: %p\n", newHeap);
 
-  // // insert a trampoline from ldso mmap address to mmapWrapper
-  // rc = insertTrampoline(ldso.mmapAddr, (void *)&mmapWrapper);
-  // if (rc < 0)
-  // {
-  //   DLOG(ERROR, "Error inserting trampoline for mmap. Exiting...\n");
-  //   exit(-1);
-  // }
-  // // insert a trampoline from ldso sbrk address to sbrkWrapper
-  // rc = insertTrampoline(ldso.sbrkAddr, (void *)&(sbrkWrapper));
-  // if (rc < 0)
-  // {
-  //   DLOG(ERROR, "Error inserting trampoline for sbrk. Exiting...\n");
-  //   exit(-1);
-  // }
-
-  // Everything is ready, let's set up the lower-half info struct for the upper
-  // half to read from
-  // rc = setupLowerHalfInfo();
-  // if (rc < 0)
-  // {
-  //   DLOG(ERROR, "Failed to set up lhinfo for the upper half. Exiting...\n");
-  //   exit(-1);
-  // }
-
   // Change the stack pointer to point to the new stack and jump into ld.so
   // TODO: Clean up all the registers?
   asm volatile(CLEAN_FOR_64_BIT(mov %0, %%esp;)
@@ -189,8 +155,7 @@ void *Loader::createNewHeapForRtld(const DynObjInfo_t *info)
   // We go through the mmap wrapper function to ensure that this gets added
   // to the list of upper half regions to be checkpointed.
 
-  const uint64_t ONE_HALF_GB   = 0x60000000;
-  void *startAddr = (void*)((unsigned long)g_range->start + ONE_HALF_GB);
+  void *startAddr = (void*)((unsigned long)g_range->start + _1500_MB);
 
   void *addr = mmapWrapper(startAddr /*0*/, heapSize, PROT_READ | PROT_WRITE,
                            MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
@@ -439,11 +404,9 @@ void *Loader::createNewStackForRtld(const DynObjInfo_t *info)
   // We go through the mmap wrapper function to ensure that this gets added
   // to the list of upper half regions to be checkpointed.
 
-  const uint64_t ONE_GB   = 0x40000000;
-  // const uint64_t ONE_HALF_GB   = 0x60000000;
-  void *startAddr = (void*)((unsigned long)g_range->start + ONE_GB);
+  void *startAddr = (void*)((unsigned long)g_range->start + _1_GB);
 
-  void *newStack = mmapWrapper(startAddr /*nullptr*/, stack.size, PROT_READ | PROT_WRITE,
+  void *newStack = mmapWrapper(startAddr, stack.size, PROT_READ | PROT_WRITE,
                                MAP_GROWSDOWN | MAP_PRIVATE | MAP_ANONYMOUS,
                                -1, 0);
   if (newStack == MAP_FAILED)
@@ -527,10 +490,6 @@ void *Loader::deepCopyStack(void *newStack, const void *origStack, size_t len,
                             const void *newStackEnd, const void *origStackEnd,
                             const DynObjInfo_t *info)
 {
-  // This function assumes that this env var is set.
-  // assert(getenv("TARGET_LD"));
-  // assert(getenv("UH_PRELOAD"));
-
   // Return early if any pointer is NULL
   if (!newStack || !origStack ||
       !newStackEnd || !origStackEnd ||
@@ -624,19 +583,6 @@ void *Loader::deepCopyStack(void *newStack, const void *origStack, size_t len,
     newEnv[i] = (char *)((uintptr_t)newEnv + (uintptr_t)envDelta);
   }
 
-  // Change "UH_PRELOAD" to "LD_PRELOAD". This way, upper half's ld.so
-  // will preload the upper half wrapper library.
-  // char **newEnvPtr = (char **)newEnv;
-  // for (; *newEnvPtr; newEnvPtr++)
-  // {
-  //   if (strstr(*newEnvPtr, "UH_PRELOAD"))
-  //   {
-  //     (*newEnvPtr)[0] = 'L';
-  //     (*newEnvPtr)[1] = 'D';
-  //     break;
-  //   }
-  // }
-
   // The aux vector, which we would have inherited from the original stack,
   // has entries that correspond to the kernel loader binary. In particular,
   // it has these entries AT_PHNUM, AT_PHDR, and AT_ENTRY that correspond
@@ -691,9 +637,6 @@ DynObjInfo_t Loader::safeLoadLib(const char *name)
   Elf64_Addr cmd_entry, ld_so_entry;
   char elf_interpreter[MAX_ELF_INTERP_SZ];
 
-  // FIXME: Do we need to make it dynamic? Is setting this required?
-  // ld_so_addr = (void*)0x7ffff81d5000;
-  // ld_so_addr = (void*)0x7ffff7dd7000;
   int cmd_fd = open(name, O_RDONLY);
   get_elf_interpreter(cmd_fd, &cmd_entry, elf_interpreter, ld_so_addr);
   // FIXME: The ELF Format manual says that we could pass the cmd_fd to ld.so,
@@ -748,15 +691,7 @@ void Loader::lockFreeAreas()
     range.start = area.endAddr;    
   }
   close(mapsfd);
-
   mmaps_range.pop_back();
-
-  // for(auto j=0; j<mmaps_range.size(); j++)
-  // {
-  //   std::cout << "mmaps_range[" << j << "]: " << 
-  //     std::hex << mmaps_range[j].start << " - " << std::hex << mmaps_range[j].end << "    " << std::hex <<
-  //     (unsigned long)mmaps_range[j].end - (unsigned long)mmaps_range[j].start << std::endl; 
-  // }  
 
   auto mmaps_size = mmaps_range.size()-1;
   for (auto i = 0; i <= mmaps_size; i++)
@@ -765,19 +700,13 @@ void Loader::lockFreeAreas()
     auto length = (unsigned long)(mmaps_range[i].end) - start_mmap;
     if(length == 0)
       continue;
-    // std::cout << "before mmap: i = " << i << "    start_mmap = " << std::hex << start_mmap << "    length = " << length << std::endl;
     void *mmap_ret = mmap((void *)start_mmap, length, PROT_NONE, MAP_PRIVATE | MAP_ANONYMOUS | MAP_FIXED, -1, 0);    
     if (mmap_ret == MAP_FAILED)
     {
-      // if(errno == ENOMEM)
-      //   DLOG(ERROR, "ENOMEM\n");  
       DLOG(ERROR, "failed to lock the free spot. %s\n", strerror(errno));
-      // exit(-1);
+      exit(-1);
     }
-    // std::cout << "after mmap: i = " << i << std::endl;
   }
-
-  // std::cout << "all mmaps_range[] handled" << std::endl;
 }
 
 void Loader::initializeLowerHalf()
@@ -793,10 +722,6 @@ void Loader::initializeLowerHalf()
   char **argv = (char **)(argcAddr + sizeof(unsigned long));
   char **ev = &argv[argc + 1];
 
-  // libcFptr_t fnc = (libcFptr_t)info.libc_start_main;
-  // pdlsym = (proxyDlsym_t)info.lh_dlsym;
-  // resetMmappedList_t resetMaps = (resetMmappedList_t)info.resetMmappedListFptr;
-
   // Copied from glibc source
   ElfW(auxv_t) * auxvec;
   char **evp = ev;
@@ -811,21 +736,6 @@ void Loader::initializeLowerHalf()
   {
     DLOG(ERROR, "Failed to mmap region: %s\n", strerror(errno));
   }
-
-  // JUMP_TO_LOWER_HALF(info.fsaddr);
-  // resetMaps();
-  // patchAuxv(auxvec, info.lh_AT_PHNUM, info.lh_AT_PHDR, 1);
-  // JWARNING(getcontext((ucontext_t*)info.g_appContext) == 0)(JASSERT_ERRNO);
-
-  // if (!lh_initialized) {
-  //   lh_initialized = true;
-  //   fnc((mainFptr)info.main, argc, argv,
-  //       (mainFptr)info.libc_csu_init,
-  //       (finiFptr)info.libc_csu_fini, 0, stack_end);
-  // }
-  // DLOG(INFO, "After getcontext\n");
-  // patchAuxv(auxvec, 0, 0, 0);
-  // RETURN_TO_UPPER_HALF();
 }
 
 void Loader::printMappedAreas()
@@ -844,10 +754,6 @@ void Loader::printMappedAreas()
 
 void Loader::setLhMemRange()
 {
-  const uint64_t ONE_GB   = 0x40000000;
-  // const uint64_t TWO_GB   = 0x80000000;
-  const uint64_t THREE_GB = 0xc0000000;
-
   Area area;
   bool found = false;
   int mapsfd = open("/proc/self/maps", O_RDONLY);
@@ -871,8 +777,8 @@ void Loader::setLhMemRange()
   if (found)
   {
     // g_range->start = (VA)area.addr - TWO_GB;
-    g_range->start = (VA)area.addr - THREE_GB;
-    g_range->end = (VA)area.addr - ONE_GB;
+    g_range->start = (VA)area.addr - _3_GB;
+    g_range->end = (VA)area.addr - _1_GB;
   }
 }
 
@@ -962,7 +868,6 @@ void *Loader::load_elf_interpreter(int fd, char *elf_interpreter,
   char e_ident[EI_NIDENT];
   int rc;
   int firstTime = 1;
-  // void *baseAddr = NULL;
 
   rc = read(fd, e_ident, sizeof(e_ident));
   assert(rc == sizeof(e_ident));
@@ -978,27 +883,7 @@ void *Loader::load_elf_interpreter(int fd, char *elf_interpreter,
 
   // Find ELF interpreter
   int phoff = elf_hdr.e_phoff;
-  // Elf64_Phdr phdr;
-  // int i;
   lseek(fd, phoff, SEEK_SET);
-  // for (i = 0; i < elf_hdr.e_phnum; i++)
-  // {
-  //   rc = read(fd, &phdr, sizeof(phdr)); // Read consecutive program headers
-  //   assert(rc == sizeof(phdr));
-  //   if (phdr.p_type == PT_LOAD)
-  //   {
-  //     // PT_LOAD is the only type of loadable segment for ld.so
-  //     if (firstTime)
-  //     {
-  //       baseAddr = map_elf_interpreter_load_segment(fd, phdr, ld_so_addr);
-  //       firstTime = 0;
-  //     }
-  //     else
-  //     {
-  //       map_elf_interpreter_load_segment(fd, phdr, ld_so_addr);
-  //     }
-  //   }
-  // }
 
   Elf64_Phdr *phdr;
   Elf64_Ehdr *ehdr = &elf_hdr;
@@ -1021,7 +906,7 @@ unsigned long Loader::map_elf_interpreter_load_segment(int fd, Elf64_Ehdr *ehdr,
 	Elf64_Phdr *iter;
 	ssize_t sz;
 	int flags, dyn = ehdr->e_type == ET_DYN;
-	unsigned char *p, *base/*, *hint*/;
+	unsigned char *p, *base;
 
 	minva = (unsigned long)-1;
 	maxva = 0;
@@ -1118,9 +1003,6 @@ void* Loader::map_elf_interpreter_load_segment(int fd, Elf64_Phdr phdr, void *ld
   size_t size = ROUND_UP(phdr.p_filesz + PAGE_OFFSET(phdr.p_vaddr));
   off_t offset = phdr.p_offset - PAGE_OFFSET(phdr.p_vaddr);
 
-  // phdr.p_vaddr = ROUND_DOWN(phdr.p_vaddr);
-  // phdr.p_offset = ROUND_DOWN(phdr.p_offset);
-  // phdr.p_memsz = phdr.p_memsz + (vaddr - phdr.p_vaddr);
   // NOTE:  base_address is 0 for first load segment
   if (first_time) {
 	  printf("size %d \n", (int)phdr.p_filesz);
@@ -1184,108 +1066,6 @@ void* Loader::map_elf_interpreter_load_segment(int fd, Elf64_Phdr phdr, void *ld
   return base_address;
 }
 
-// void *Loader::map_elf_interpreter_load_segment(int fd, Elf64_Phdr phdr, void *ld_so_addr, bool is_first_seg)
-// {
-//   static char *base_address = NULL; // is NULL on call to first LOAD segment
-//   int prot = PROT_NONE;
-//   if (phdr.p_flags & PF_R)
-//     prot |= PROT_READ;
-//   if (phdr.p_flags & PF_W)
-//     prot |= PROT_WRITE;
-//   if (phdr.p_flags & PF_X)
-//     prot |= PROT_EXEC;
-//   assert(phdr.p_memsz >= phdr.p_filesz);
-//   // NOTE:  man mmap says:
-//   // For a file that is not a  multiple  of  the  page  size,  the
-//   // remaining memory is zeroed when mapped, and writes to that region
-//   // are not written out to the file.
-//   void *rc2;
-//   // Check ELF Format constraint:
-//   if (phdr.p_align > 1)
-//   {
-//     assert(phdr.p_vaddr % phdr.p_align == phdr.p_offset % phdr.p_align);
-//   }
-//   int vaddr = phdr.p_vaddr;
-
-//   int flags = MAP_PRIVATE;
-//   unsigned long addr = ROUND_DOWN(base_address + vaddr);
-//   size_t size = ROUND_UP(phdr.p_filesz + PAGE_OFFSET(phdr.p_vaddr));
-//   off_t offset = phdr.p_offset - PAGE_OFFSET(phdr.p_vaddr);
-
-//   // phdr.p_vaddr = ROUND_DOWN(phdr.p_vaddr);
-//   // phdr.p_offset = ROUND_DOWN(phdr.p_offset);
-//   // phdr.p_memsz = phdr.p_memsz + (vaddr - phdr.p_vaddr);
-//   // NOTE:  base_address is 0 for first load segment
-//   if (is_first_seg)
-//   {
-//     printf("size %d \n", (int)phdr.p_filesz);
-//     phdr.p_vaddr += (unsigned long long)ld_so_addr;
-//     size = 0x27000;
-//   }
-//   else
-//   {
-//     flags |= MAP_FIXED;
-//   }
-//   if (ld_so_addr)
-//   {
-//     flags |= MAP_FIXED;
-//   }
-  
-//   // FIXME:  On first load segment, we should map 0x400000 (2*phdr.p_align),
-//   //         and then unmap the unused portions later after all the
-//   //         LOAD segments are mapped.  This is what ld.so would do.
-
-//   std::cout << "in map_elf_interpreter_load_segment() - before mmapWrapper() call: addr = " << std::hex << addr << std::endl;
-//   rc2 = mmapWrapper((void *)addr, size, prot, flags, fd, offset);
-//   std::cout << "in map_eld_interpreter_load_segment() - after mmapWrapper() call: MAP_FAILED = " << (rc2 == MAP_FAILED) << std::endl;
-
-//   if (rc2 == MAP_FAILED)
-//   {
-//     DLOG(ERROR, "Failed to map memory region at %p. Error:%s\n",
-//          (void *)addr, strerror(errno));
-//     return NULL;
-//   }
-//   unsigned long startBss = (uintptr_t)base_address +
-//                            phdr.p_vaddr + phdr.p_filesz;
-//   unsigned long endBss = (uintptr_t)base_address + phdr.p_vaddr + phdr.p_memsz;
-//   // Required by ELF Format:
-//   if (phdr.p_memsz > phdr.p_filesz)
-//   {
-//     // This condition is true for the RW (data) segment of ld.so
-//     // We need to clear out the rest of memory contents, similarly to
-//     // what the kernel would do. See here:
-//     //   https://elixir.bootlin.com/linux/v4.18.11/source/fs/binfmt_elf.c#L905
-//     // Note that p_memsz indicates end of data (&_end)
-
-//     // First, get to the page boundary
-//     uintptr_t endByte = ROUND_UP(startBss);
-//     // Next, figure out the number of bytes we need to clear out.
-//     // From Bss to the end of page.
-//     size_t bytes = endByte - startBss;
-//     memset((void *)startBss, 0, bytes);
-//   }
-//   // If there's more bss that overflows to another page, map it in and
-//   // zero it out
-//   startBss = ROUND_UP(startBss);
-//   endBss = ROUND_UP(endBss);
-//   if (endBss > startBss)
-//   {
-//     void *base = (void *)startBss;
-//     size_t len = endBss - startBss;
-//     flags |= MAP_ANONYMOUS; // This should give us 0-ed out pages
-//     rc2 = mmapWrapper(base, len, prot, flags, -1, 0);
-//     if (rc2 == MAP_FAILED)
-//     {
-//       DLOG(ERROR, "Failed to map memory region at %p. Error:%s\n",
-//            (void *)startBss, strerror(errno));
-//       return NULL;
-//     }
-//   }
-//   if (is_first_seg)
-//     base_address = (char *)rc2;
-//   return base_address;
-// }
-
 void Loader::get_elf_interpreter(int fd, Elf64_Addr *cmd_entry, char *elf_interpreter, void *ld_so_addr)
 {
   int rc;
@@ -1302,19 +1082,6 @@ void Loader::get_elf_interpreter(int fd, Elf64_Addr *cmd_entry, char *elf_interp
   rc = read(fd, &elf_hdr, sizeof(elf_hdr));
   assert(rc == sizeof(elf_hdr));
   *cmd_entry = elf_hdr.e_entry;
-
-  // // Find ELF interpreter
-  // int i;
-  // Elf64_Phdr phdr;
-  // int phoff = elf_hdr.e_phoff;
-
-  // lseek(fd, phoff, SEEK_SET);
-  // for (i = 0; i < elf_hdr.e_phnum; i++)
-  // {
-  //   assert(i < elf_hdr.e_phnum);
-  //   rc = read(fd, &phdr, sizeof(phdr)); // Read consecutive program headers
-  //   assert(rc == sizeof(phdr));
-  // }
 }
 
 void *Loader::mmapWrapper(void *addr, size_t length, int prot, int flags, int fd, off_t offset)
@@ -1407,34 +1174,6 @@ void Loader::addRegionTommaps(void *addr, size_t length)
   newRegion.addr = addr;
   newRegion.len = length;
   mmaps.push_back(newRegion);
-}
-
-// Sets up lower-half info struct for the upper half to read from. Returns 0
-// on success, -1 otherwise
-int Loader::setupLowerHalfInfo()
-{
-  // lhInfo.lhSbrk = (void *)&sbrkWrapper;
-  // lhInfo.lhMmap = (void *)&mmapWrapper;
-  // lhInfo.lhMunmap = (void *)&munmapWrapper;
-  // lhInfo.lhDlsym = (void *)&lhDlsym;
-  // lhInfo.lhMmapListFptr = (void *)&getMmappedList;
-  // lhInfo.uhEndofHeapFptr = (void *)&getEndOfHeap;
-  // lhInfo.getFatCubinHandle = (void *)&fatHandle;
-  if (syscall(SYS_arch_prctl, ARCH_GET_FS, &lhInfo.lhFsAddr) < 0)
-  {
-    DLOG(ERROR, "Could not retrieve lower half's fs. Error: %s. Exiting...\n", strerror(errno));
-    return -1;
-  }
-  // FIXME: We'll just write out the lhInfo object to a file; the upper half
-  // will read this file to figure out the wrapper addresses. This is ugly
-  // but will work for now.
-  int rc = writeLhInfoToFile();
-  if (rc < 0)
-  {
-    DLOG(ERROR, "Error writing address of lhinfo to file. Exiting...\n");
-    return -1;
-  }
-  return 0;
 }
 
 // Writes out the lhinfo global object to a file. Returns 0 on success,
