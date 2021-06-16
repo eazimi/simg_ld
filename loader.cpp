@@ -1097,7 +1097,7 @@ void *Loader::mmapWrapper(void *addr, size_t length, int prot, int flags, int fd
   ret = mmap(addr, length, prot, flags, fd, offset);
   if (ret != MAP_FAILED)
   {
-    addRegionTommaps(ret, length);
+    addRegionToMMaps(ret, length);
   }
   RETURN_TO_UPPER_HALF();
   return ret;
@@ -1168,7 +1168,7 @@ void *Loader::__sbrkWrapper(intptr_t increment)
   return oldbrk;
 }
 
-void Loader::addRegionTommaps(void *addr, size_t length)
+void Loader::addRegionToMMaps(void *addr, size_t length)
 {
   MmapInfo_t newRegion;
   newRegion.addr = addr;

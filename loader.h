@@ -149,7 +149,7 @@ private:
     void* GET_ARGC_ADDR(const void* stackEnd);
     void patchAuxv(ElfW(auxv_t) *av, unsigned long phnum, unsigned long phdr, unsigned long entry);
     void* createNewHeapForRtld(const DynObjInfo_t *info);
-    void addRegionTommaps(void *addr, size_t length);
+    void addRegionToMMaps(void *addr, size_t length);
     void* __sbrkWrapper(intptr_t increment);
     int insertTrampoline(void *from_addr, void *to_addr);
     void* getEntryPoint(DynObjInfo_t info);
