@@ -729,7 +729,7 @@ void Loader::reserveMemRegion()
     ;
   auxvec = (ElfW(auxv_t) *)evp;
 
-  setLhMemRange();
+  setReservedMemRange();
   void *region = mmapWrapper(g_range->start, (unsigned long)g_range->end - (unsigned long)g_range->start, PROT_READ | PROT_WRITE,
                              MAP_GROWSDOWN | MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
   if (region == MAP_FAILED)
@@ -752,7 +752,7 @@ void Loader::printMappedAreas()
   }
 }
 
-void Loader::setLhMemRange()
+void Loader::setReservedMemRange()
 {
   Area area;
   bool found = false;
