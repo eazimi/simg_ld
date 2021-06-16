@@ -95,7 +95,7 @@ void Loader::runRtld(int argc, char **argv)
   int rc = -1;
 
   // reserve some 2 GB in the address space, lock remained free areas
-  initializeLowerHalf();
+  reserveMemRegion();
   lockFreeAreas();
   unlockArea();
   // printMappedAreas();
@@ -709,7 +709,7 @@ void Loader::lockFreeAreas()
   }
 }
 
-void Loader::initializeLowerHalf()
+void Loader::reserveMemRegion()
 {
   bool lh_initialized = false;
   // proc-stat returns the address of argc on the stack.

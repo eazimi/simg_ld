@@ -154,7 +154,7 @@ private:
     int insertTrampoline(void *from_addr, void *to_addr);
     void* getEntryPoint(DynObjInfo_t info);
     unsigned long getStackPtr();
-    void initializeLowerHalf();
+    void reserveMemRegion();
     void lockFreeAreas();
     void unlockArea();
     void setLhMemRange();
