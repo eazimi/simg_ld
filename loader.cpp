@@ -82,20 +82,21 @@ void *Loader::getEntryPoint(DynObjInfo_t info)
   return info.entryPoint;
 }
 
+void Loader::init(int argc)
 {
   if (argc < 2)
   {
     DLOG(ERROR, "Usage: ./simg_ld /path/to/program [application arguments ...]\n");
-    return;
+    exit(-1);
   }
-
-  int rc = -1;
 
   // reserve some 2 GB in the address space, lock remained free areas
   reserveMemRegion();
   lockFreeMemRegions();
   unlockReservedMemRegion();
   // printMappedAreas();
+}
+
 // This function loads in ld.so, sets up a separate stack for it, and jumps
 // to the entry point of ld.so
 void Loader::runRtld()

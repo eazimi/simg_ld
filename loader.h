@@ -123,6 +123,7 @@ class Loader
 public:
     explicit Loader() { g_range = std::make_unique<MemRange_t>(); }
     void runRtld();
+    void init(int argc);
 
 private:    
     void get_elf_interpreter(int fd, Elf64_Addr *cmd_entry, char* elf_interpreter, void *ld_so_addr);
