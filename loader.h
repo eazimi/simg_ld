@@ -126,7 +126,7 @@ public:
     void init(int argc);
 
 private:
-    void runRtld();
+    void runRtld(const char* ldname, const char* app);
     void get_elf_interpreter(int fd, Elf64_Addr *cmd_entry, char* elf_interpreter, void *ld_so_addr);
     DynObjInfo_t safeLoadLib(const char *name);
     void* load_elf_interpreter(int fd, char *elf_interpreter, Elf64_Addr *ld_so_entry, void *ld_so_addr, DynObjInfo_t *info);

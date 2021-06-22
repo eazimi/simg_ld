@@ -99,17 +99,27 @@ void Loader::init(int argc)
 
 void Loader::run()
 {
-  runRtld();
+  char *ldname = (char *)"/lib64/ld-linux-x86-64.so.2";
+  char *app = nullptr;
+  pid_t pid = fork();
+  if (pid == 0) // child
+  {
+    app = (char *)"/usr/bin/ls";
+  }
+  else // parent
+  {
+    app = (char *)"/usr/bin/gnome-calculator";
+  }
+  runRtld(ldname, app);
 }
 
 // This function loads in ld.so, sets up a separate stack for it, and jumps
 // to the entry point of ld.so
-void Loader::runRtld()
+void Loader::runRtld(const char* ldname, const char* app)
 {
   int rc = -1;
 
-  // Load RTLD (ld.so)
-  char *ldname = (char *)"/lib64/ld-linux-x86-64.so.2";
+  // Load RTLD (ld.so)  
   DynObjInfo_t ldso = safeLoadLib(ldname);
   if (ldso.baseAddr == NULL || ldso.entryPoint == NULL)
   {
