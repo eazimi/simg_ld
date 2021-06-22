@@ -3,8 +3,9 @@
 #include "loader.h"
 
 int main(int argc, char **argv, char** env)
-{
-    (new Loader)->runRtld(argc, argv);
+{   
+    std::unique_ptr<Loader> loader = std::make_unique<Loader>();
+    loader->runRtld();
     std::cout << "hello world!" << std::endl;
     return 0;
 }

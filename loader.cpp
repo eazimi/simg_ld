@@ -82,9 +82,6 @@ void *Loader::getEntryPoint(DynObjInfo_t info)
   return info.entryPoint;
 }
 
-// This function loads in ld.so, sets up a separate stack for it, and jumps
-// to the entry point of ld.so
-void Loader::runRtld(int argc, char **argv)
 {
   if (argc < 2)
   {
@@ -99,6 +96,11 @@ void Loader::runRtld(int argc, char **argv)
   lockFreeMemRegions();
   unlockReservedMemRegion();
   // printMappedAreas();
+// This function loads in ld.so, sets up a separate stack for it, and jumps
+// to the entry point of ld.so
+void Loader::runRtld()
+{
+  int rc = -1;
 
   // Load RTLD (ld.so)
   char *ldname = (char *)"/lib64/ld-linux-x86-64.so.2";
