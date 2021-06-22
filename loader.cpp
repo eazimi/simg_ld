@@ -97,6 +97,11 @@ void Loader::init(int argc)
   // printMappedAreas();
 }
 
+void Loader::run()
+{
+  runRtld();
+}
+
 // This function loads in ld.so, sets up a separate stack for it, and jumps
 // to the entry point of ld.so
 void Loader::runRtld()

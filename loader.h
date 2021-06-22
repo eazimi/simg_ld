@@ -121,11 +121,12 @@ typedef struct __MemRange
 class Loader
 {
 public:
-    explicit Loader() { g_range = std::make_unique<MemRange_t>(); }
-    void runRtld();
+    explicit Loader() { g_range = std::make_unique<MemRange_t>(); }    
+    void run();
     void init(int argc);
 
-private:    
+private:
+    void runRtld();
     void get_elf_interpreter(int fd, Elf64_Addr *cmd_entry, char* elf_interpreter, void *ld_so_addr);
     DynObjInfo_t safeLoadLib(const char *name);
     void* load_elf_interpreter(int fd, char *elf_interpreter, Elf64_Addr *ld_so_entry, void *ld_so_addr, DynObjInfo_t *info);
