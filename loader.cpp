@@ -771,8 +771,7 @@ void Loader::setReservedMemRange()
     }
   }
   close(mapsfd);
-  if (g_range == nullptr)
-    g_range = std::make_unique<MemRange_t>();
+
   // if (found && (g_range == nullptr))
   if (found)
   {

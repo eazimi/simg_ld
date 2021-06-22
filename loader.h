@@ -121,7 +121,7 @@ typedef struct __MemRange
 class Loader
 {
 public:
-    explicit Loader() = default;
+    explicit Loader() { g_range = std::make_unique<MemRange_t>(); }
     void runRtld(int argc, char** argv);
 
 private:    
