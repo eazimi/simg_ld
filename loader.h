@@ -135,7 +135,7 @@ private:
     void* sbrkWrapper(intptr_t increment);
     int writeLhInfoToFile();
     off_t get_symbol_offset(int fd, const char *ldname, const char *symbol);
-    void * createNewStackForRtld(const DynObjInfo_t *info);
+    void * createNewStackForRtld(const DynObjInfo_t *info, const char *appName);
     void getStackRegion(Area *stack);
     int readMapsLine(int mapsfd, Area *area);
     char readChar(int fd);

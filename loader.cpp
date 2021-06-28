@@ -136,7 +136,7 @@ void Loader::runRtld(const char* ldname, const char* app)
   void *ldso_entrypoint = getEntryPoint(ldso);
 
   // Create new stack region to be used by RTLD
-  void *newStack = createNewStackForRtld(&ldso);
+  void *newStack = createNewStackForRtld(&ldso, app);
   if (!newStack)
   {
     DLOG(ERROR, "Error creating new stack for RTLD. Exiting...\n");
@@ -416,7 +416,7 @@ void Loader::getProcStatField(enum Procstat_t type, char *out, size_t len)
 //  1. Creates a new stack region to be used for initialization of RTLD (ld.so)
 //  2. Deep copies the original stack (from the kernel) in the new stack region
 //  3. Returns a pointer to the beginning of stack in the new stack region
-void *Loader::createNewStackForRtld(const DynObjInfo_t *info)
+void *Loader::createNewStackForRtld(const DynObjInfo_t *info, const char *appName)
 {
   Area stack;
   char stackEndStr[20] = {0};
@@ -597,6 +597,20 @@ void *Loader::deepCopyStack(void *newStack, const void *origStack, size_t len,
   // off_t argvDelta = (uintptr_t)getenv("TARGET_LD") - (uintptr_t)origArgv;
   off_t argvDelta = (uintptr_t)origArgv[1] - (uintptr_t)origArgv;
   newArgv[0] = (char *)((uintptr_t)newArgv + (uintptr_t)argvDelta);
+  // newArgv[1] = (char*)"/home";
+  // newArgv[1][1] = '\0'; 
+
+  // newArgv[1][0] = '\0';
+  // newArgv[2][0] = '\0';   
+
+  // off_t argvDelta;
+  // // if (strcmp(newArgv[1], appName) == 0)
+  //   argvDelta = (uintptr_t)origArgv[1] - (uintptr_t)origArgv;
+  // // else if (strcmp(newArgv[2], appName) == 0)
+  //   // argvDelta = (uintptr_t)origArgv[2] - (uintptr_t)origArgv;
+  // // newArgv[0] = (char *)((uintptr_t)newArgv + (uintptr_t)argvDelta);
+  // memcpy(newArgv[0], appName, strlen(appName));
+  // newArgv[0][strlen(appName)] = '\0';
 
   // Patch the env vector in the new stack
   for (int i = 0; origEnv[i] != nullptr; i++)
