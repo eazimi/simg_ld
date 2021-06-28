@@ -12,6 +12,10 @@
 #include <asm/prctl.h>
 #include <syscall.h>
 #include <fstream>
+// #include <sys/ptrace.h>
+// #include <sys/wait.h>
+#include <sys/socket.h>
+#include <event2/event.h>
 #include "switch_context.h"
 #include "limits.h"
 
@@ -105,14 +109,63 @@ void Loader::run(char ** argv)
 {
   char *ldname = (char *)LD_NAME;
   char *app = nullptr;
+
+  int sockets[2];
+  assert(socketpair(AF_LOCAL, SOCK_SEQPACKET | SOCK_CLOEXEC, 0, sockets) != -1);
+
   pid_t pid = fork();
+  assert(pid >= 0);
   if (pid == 0) // child
   {
+    close(sockets[1]);
+    // Remove CLOEXEC to pass the socket to the application
+    int fdflags = fcntl(sockets[0], F_GETFD, 0);
+    assert(fdflags != -1 && fcntl(sockets[0], F_SETFD, fdflags & ~FD_CLOEXEC) != -1);
+    setenv(SIMG_LD_ENV_SOCKET_FD, std::to_string(sockets[0]).c_str(), 1);
+    
+
+
+
+
+
+
+    // ptrace(PTRACE_TRACEME, 0, nullptr, nullptr);
+    // runRtld(ldname, argv[2]);
+    // while(true);
+    // sleep(5);
+    // raise(SIGINT);
+    // std::cout << "after raining SIGINT in child" << std::endl;
+    // while(true);
     runRtld(ldname, argv[1]);
+    // std::cout << "child exit" << std::endl;
   }
   else // parent
   {
+    close(sockets[0]);
+    // int status;
+    // while (true)
+    // {
+    //   auto wait_ret = waitpid(pid, &status, WNOHANG);
+    //   // auto wait_ret = waitpid(pid, &status, 0);
+    //   // std::cout << "wait_ret " << wait_ret << " child pid " << pid << std::endl;
+    //   if (wait_ret > 0)
+    //   {
+    //     std::cout << "wait_ret " << wait_ret << " child pid " << pid << " status " << status << std::endl;
+
+    //     // if (status >> 8 == (SIGTRAP | (PTRACE_EVENT_EXIT << 8)))
+    //     // {
+    //     //   assert(ptrace(PTRACE_GETEVENTMSG, pid, 0, &status) != -1);
+    //     //   if (WIFSIGNALED(status))
+    //     //   {
+    //     //     DLOG(ERROR, "Child process crashed, Could not get exit status. Exiting...\n");
+    //     //     exit(-1);
+    //     //   }
+    //     // }
+    //     break;
+    //   }
     runRtld(ldname, argv[1]);
+    // }
+    // std::cout << "after waitpid" << std::endl;
   }
 }
 
