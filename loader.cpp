@@ -108,13 +108,12 @@ void Loader::run(char ** argv)
   pid_t pid = fork();
   if (pid == 0) // child
   {
-    app = (char *)"/usr/bin/ls";
+    runRtld(ldname, argv[1]);
   }
   else // parent
   {
-    app = (char *)"/usr/bin/gnome-calculator";
+    runRtld(ldname, argv[1]);
   }
-  runRtld(ldname, app);
 }
 
 // This function loads in ld.so, sets up a separate stack for it, and jumps
@@ -471,7 +470,7 @@ void *Loader::createNewStackForRtld(const DynObjInfo_t *info, const char *appNam
   // 2. Deep copy stack
   newStackEnd = deepCopyStack(newStack, stack.addr, stack.size,
                               (void *)newStackEnd, (void *)origStackEnd,
-                              info);
+                              info, appName);
 
   return newStackEnd;
 }
@@ -510,12 +509,12 @@ ElfW(auxv_t) * Loader::GET_AUXV_ADDR(const char **env)
 // in the new stack region.
 void *Loader::deepCopyStack(void *newStack, const void *origStack, size_t len,
                             const void *newStackEnd, const void *origStackEnd,
-                            const DynObjInfo_t *info)
+                            const DynObjInfo_t *info, const char *appName)
 {
   // Return early if any pointer is NULL
   if (!newStack || !origStack ||
       !newStackEnd || !origStackEnd ||
-      !info)
+      !info || (appName == nullptr))
   {
     return nullptr;
   }

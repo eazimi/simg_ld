@@ -143,7 +143,7 @@ private:
     char readHex(int fd, VA *virt_mem_addr);
     void getProcStatField(enum Procstat_t type, char *out, size_t len);
     void* deepCopyStack(void *newStack, const void *origStack, size_t len,
-              const void *newStackEnd, const void *origStackEnd, const DynObjInfo_t *info);
+              const void *newStackEnd, const void *origStackEnd, const DynObjInfo_t *info, const char *appName);
     ElfW(auxv_t)* GET_AUXV_ADDR(const char **env);
     void* GET_ENV_ADDR(char **argv, int argc);
     void* GET_ARGV_ADDR(const void* stackEnd);
