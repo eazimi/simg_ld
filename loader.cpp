@@ -75,6 +75,9 @@ const char *colors[] = {KNRM, KRED, KBLU, KGRN, KYEL};
 #define CLEAN_FOR_64_BIT_HELPER(args...) #args
 #define CLEAN_FOR_64_BIT(args...) CLEAN_FOR_64_BIT_HELPER(args)
 
+#define LD_NAME "/lib64/ld-linux-x86-64.so.2"
+#define SIMG_LD_ENV_SOCKET_FD "SIMG_LD_SOCKET_FD"
+
 // This function returns the entry point of the ld.so executable given
 // the library handle
 void *Loader::getEntryPoint(DynObjInfo_t info)
@@ -84,9 +87,10 @@ void *Loader::getEntryPoint(DynObjInfo_t info)
 
 void Loader::init(int argc)
 {
+  // if (argc < 3)
   if (argc < 2)
   {
-    DLOG(ERROR, "Usage: ./simg_ld /path/to/program [application arguments ...]\n");
+    DLOG(ERROR, "Usage: ./simg_ld /PATH/TO/APP1 /PATH/TO/APP2]\n");
     exit(-1);
   }
 
@@ -97,9 +101,9 @@ void Loader::init(int argc)
   // printMappedAreas();
 }
 
-void Loader::run()
+void Loader::run(char ** argv)
 {
-  char *ldname = (char *)"/lib64/ld-linux-x86-64.so.2";
+  char *ldname = (char *)LD_NAME;
   char *app = nullptr;
   pid_t pid = fork();
   if (pid == 0) // child

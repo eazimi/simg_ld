@@ -122,7 +122,7 @@ class Loader
 {
 public:
     explicit Loader() { g_range = std::make_unique<MemRange_t>(); }    
-    void run();
+    void run(char **argv);
     void init(int argc);
 
 private:
