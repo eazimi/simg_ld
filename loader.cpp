@@ -80,7 +80,7 @@ const char *colors[] = {KNRM, KRED, KBLU, KGRN, KYEL};
 #define CLEAN_FOR_64_BIT(args...) CLEAN_FOR_64_BIT_HELPER(args)
 
 #define LD_NAME "/lib64/ld-linux-x86-64.so.2"
-#define SIMG_LD_ENV_SOCKET_FD "SIMG_LD_SOCKET_FD"
+// #define SIMG_LD_ENV_SOCKET_FD "SIMG_LD_SOCKET_FD"
 
 // This function returns the entry point of the ld.so executable given
 // the library handle
@@ -105,23 +105,66 @@ void Loader::init(int argc)
   // printMappedAreas();
 }
 
+// returns the parent's parameters start index in the command line parameters
+int Loader::processCommandLineArgs(const char **argv, pair<int, int> &param_count) const
+{
+  vector<string> argv1, argv2;
+  auto *args = &argv1;
+  bool seperatorFounded = false;
+  auto i {0};
+  auto index {0};
+  argv++;
+  i++;
+  while(*argv != nullptr)
+  {
+    if(strcmp(*argv, (char*)"--") == 0)
+    {
+      seperatorFounded = (!seperatorFounded) ? true : false;
+      if(!seperatorFounded)
+        return -1;
+      index = i;
+      args = &argv2;
+    }
+    else
+      args->push_back(*argv);
+    argv++;
+    i++;
+  }
+
+  // todo: check for more condition, like app's parameter count
+  if(!seperatorFounded || argv1.empty() || argv2.empty())
+    return -1;
+  param_count.first = argv1.size(); // child process
+  param_count.second = argv2.size(); // parent process
+  return ++index;
+}
+
 void Loader::run(char ** argv)
 {
   char *ldname = (char *)LD_NAME;
   char *app = nullptr;
 
-  int sockets[2];
-  assert(socketpair(AF_LOCAL, SOCK_SEQPACKET | SOCK_CLOEXEC, 0, sockets) != -1);
+  vector<string> argv1, argv2;
+  pair<int, int> param_count;
+  int param_index = processCommandLineArgs((const char**) argv, param_count);
+  if(param_index == -1)
+  {
+    DLOG(ERROR, "Command line parameters are invalid, exiting ...\n");
+    exit(-1);
+  }
+
+  // int sockets[2];
+  // assert(socketpair(AF_LOCAL, SOCK_SEQPACKET | SOCK_CLOEXEC, 0, sockets) != -1);
 
   pid_t pid = fork();
   assert(pid >= 0);
   if (pid == 0) // child
   {
-    close(sockets[1]);
+    // close(sockets[1]);
     // Remove CLOEXEC to pass the socket to the application
-    int fdflags = fcntl(sockets[0], F_GETFD, 0);
-    assert(fdflags != -1 && fcntl(sockets[0], F_SETFD, fdflags & ~FD_CLOEXEC) != -1);
-    setenv(SIMG_LD_ENV_SOCKET_FD, std::to_string(sockets[0]).c_str(), 1);
+    // int fdflags = fcntl(sockets[0], F_GETFD, 0);
+    // assert(fdflags != -1 && fcntl(sockets[0], F_SETFD, fdflags & ~FD_CLOEXEC) != -1);
+    // setenv(SIMG_LD_ENV_SOCKET_FD, std::to_string(sockets[0]).c_str(), 1);
     
 
 
@@ -136,12 +179,12 @@ void Loader::run(char ** argv)
     // raise(SIGINT);
     // std::cout << "after raining SIGINT in child" << std::endl;
     // while(true);
-    runRtld(ldname, argv[1]);
+    runRtld(ldname, 0, param_count.first);
     // std::cout << "child exit" << std::endl;
   }
   else // parent
   {
-    close(sockets[0]);
+    // close(sockets[0]);
     // int status;
     // while (true)
     // {
@@ -163,7 +206,7 @@ void Loader::run(char ** argv)
     //     // }
     //     break;
     //   }
-    runRtld(ldname, argv[1]);
+    runRtld(ldname, param_index, param_count.second);
     // }
     // std::cout << "after waitpid" << std::endl;
   }
@@ -171,7 +214,7 @@ void Loader::run(char ** argv)
 
 // This function loads in ld.so, sets up a separate stack for it, and jumps
 // to the entry point of ld.so
-void Loader::runRtld(const char* ldname, const char* app)
+void Loader::runRtld(const char* ldname, int param_index, int param_count)
 {
   int rc = -1;
 
@@ -182,19 +225,19 @@ void Loader::runRtld(const char* ldname, const char* app)
     DLOG(ERROR, "Error loading the runtime loader (%s). Exiting...\n", ldname);
     return;
   }
-  DLOG(INFO, "New ld.so loaded at: %p\n", ldso.baseAddr);
+  // DLOG(INFO, "New ld.so loaded at: %p\n", ldso.baseAddr);
 
   // Pointer to the ld.so entry point
   void *ldso_entrypoint = getEntryPoint(ldso);
 
   // Create new stack region to be used by RTLD
-  void *newStack = createNewStackForRtld(&ldso, app);
+  void *newStack = createNewStackForRtld(&ldso, param_index, param_count);
   if (!newStack)
   {
     DLOG(ERROR, "Error creating new stack for RTLD. Exiting...\n");
     exit(-1);
   }
-  DLOG(INFO, "New stack start at: %p\n", newStack);
+  // DLOG(INFO, "New stack start at: %p\n", newStack);
 
   // Create new heap region to be used by RTLD
   void *newHeap = createNewHeapForRtld(&ldso);
@@ -203,7 +246,7 @@ void Loader::runRtld(const char* ldname, const char* app)
     DLOG(ERROR, "Error creating new heap for RTLD. Exiting...\n");
     exit(-1);
   }
-  DLOG(INFO, "New heap mapped at: %p\n", newHeap);
+  // DLOG(INFO, "New heap mapped at: %p\n", newHeap);
 
   // Change the stack pointer to point to the new stack and jump into ld.so
   // TODO: Clean up all the registers?
@@ -468,7 +511,7 @@ void Loader::getProcStatField(enum Procstat_t type, char *out, size_t len)
 //  1. Creates a new stack region to be used for initialization of RTLD (ld.so)
 //  2. Deep copies the original stack (from the kernel) in the new stack region
 //  3. Returns a pointer to the beginning of stack in the new stack region
-void *Loader::createNewStackForRtld(const DynObjInfo_t *info, const char *appName)
+void *Loader::createNewStackForRtld(const DynObjInfo_t *info, int param_index, int param_count)
 {
   Area stack;
   char stackEndStr[20] = {0};
@@ -488,7 +531,7 @@ void *Loader::createNewStackForRtld(const DynObjInfo_t *info, const char *appNam
     DLOG(ERROR, "Failed to mmap new stack region: %s\n", strerror(errno));
     return nullptr;
   }
-  DLOG(INFO, "New stack mapped at: %p\n", newStack);
+  // DLOG(INFO, "New stack mapped at: %p\n", newStack);
 
   // 3. Get pointer to the beginning of the stack in the new stack region
   // The idea here is to look at the beginning of stack in the original
@@ -517,13 +560,13 @@ void *Loader::createNewStackForRtld(const DynObjInfo_t *info, const char *appNam
   unsigned long newStackOffset = origStackOffset;
   void *newStackEnd = (void *)((unsigned long)newStack + newStackOffset);
 
-  printf("origStack: %lu origStackOffset: %lu OrigStackEnd: %lu \n", (unsigned long)stack.addr, (unsigned long)origStackOffset, (unsigned long)origStackEnd);
-  printf("newStack: %lu newStackOffset: %lu newStackEnd: %lu \n", (unsigned long)newStack, (unsigned long)newStackOffset, (unsigned long)newStackEnd);
+  // printf("origStack: %lu origStackOffset: %lu OrigStackEnd: %lu \n", (unsigned long)stack.addr, (unsigned long)origStackOffset, (unsigned long)origStackEnd);
+  // printf("newStack: %lu newStackOffset: %lu newStackEnd: %lu \n", (unsigned long)newStack, (unsigned long)newStackOffset, (unsigned long)newStackEnd);
 
   // 2. Deep copy stack
   newStackEnd = deepCopyStack(newStack, stack.addr, stack.size,
                               (void *)newStackEnd, (void *)origStackEnd,
-                              info, appName);
+                              info, param_index, param_count);
 
   return newStackEnd;
 }
@@ -562,12 +605,12 @@ ElfW(auxv_t) * Loader::GET_AUXV_ADDR(const char **env)
 // in the new stack region.
 void *Loader::deepCopyStack(void *newStack, const void *origStack, size_t len,
                             const void *newStackEnd, const void *origStackEnd,
-                            const DynObjInfo_t *info, const char *appName)
+                            const DynObjInfo_t *info, int param_index, int param_count)
 {
   // Return early if any pointer is NULL
   if (!newStack || !origStack ||
       !newStackEnd || !origStackEnd ||
-      !info || (appName == nullptr))
+      !info)
   {
     return nullptr;
   }
@@ -647,10 +690,34 @@ void *Loader::deepCopyStack(void *newStack, const void *origStack, size_t len,
   //   new stack to point to "/path/to/ld.so", instead of
   //   "/path/to/kernel-loader".
   // off_t argvDelta = (uintptr_t)getenv("TARGET_LD") - (uintptr_t)origArgv;
-  off_t argvDelta = (uintptr_t)origArgv[1] - (uintptr_t)origArgv;
-  newArgv[0] = (char *)((uintptr_t)newArgv + (uintptr_t)argvDelta);
+  
+  // in child parent process 
+  if (param_index == 0)
+  {
+    off_t argvDelta = (uintptr_t)origArgv[1] - (uintptr_t)origArgv;
+    newArgv[0] = (char *)((uintptr_t)newArgv + (uintptr_t)argvDelta);
+    newArgv[param_count + 1] = nullptr;
+    // *(int *)newArgcAddr = param_count + 1;
+  } 
+  else // in the child process
+  {
+    // newArgv[0] = (char *)((uintptr_t)newArgv + (uintptr_t)param_index);
+    // auto i {1};
+    // for(; i<=param_count; i++)
+    //   newArgv[i] = (char *)((uintptr_t)newArgv + (uintptr_t)i);
+    // newArgv[i] = nullptr;
+
+    newArgv[0] = newArgv[param_index];
+    auto i {0};
+    for(; i<param_count; i++)
+      newArgv[i+1] = newArgv[param_index+i];
+    newArgv[i+1] = nullptr;
+    // *(int *)newArgcAddr = param_count + 1;
+  }
+  *(int *)newArgcAddr = param_count + 1;
+  
   // newArgv[1] = (char*)"/home";
-  // newArgv[1][1] = '\0'; 
+  // newArgv[1][1] = '\0';
 
   // newArgv[1][0] = '\0';
   // newArgv[2][0] = '\0';   
@@ -680,7 +747,7 @@ void *Loader::deepCopyStack(void *newStack, const void *origStack, size_t len,
             (uintptr_t)info->phdr,
             (uintptr_t)info->entryPoint);
 
-  printf("newArgv[-2]: %lu \n", (unsigned long)&newArgv[0]);
+  // printf("newArgv[-2]: %lu \n", (unsigned long)&newArgv[0]);
 
   // We clear out the rest of the new stack region just in case ...
   memset(newStack, 0, (size_t)((uintptr_t)&newArgv[-2] - (uintptr_t)newStack));
@@ -708,7 +775,7 @@ void Loader::patchAuxv(ElfW(auxv_t) * av, unsigned long phnum,
       av->a_un.a_val = entry;
       break;
     case AT_RANDOM:
-      DLOG(NOISE, "AT_RANDOM value: 0%lx\n", av->a_un.a_val);
+      // DLOG(NOISE, "AT_RANDOM value: 0%lx\n", av->a_un.a_val);
       break;
     default:
       break;
@@ -867,6 +934,8 @@ void Loader::setReservedMemRange()
     g_range->start = (VA)area.addr - _3_GB;
     g_range->end = (VA)area.addr - _1_GB;
   }
+
+  std::cout << "setReservedMemRange(): start = " << std::hex << g_range->start << " , end = " << g_range->end << std::endl;
 }
 
 // Returns the address of argc on the stack

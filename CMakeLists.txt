@@ -11,6 +11,9 @@ set(CMAKE_BUILD_TYPE Debug)
 set(PROJECT simg_ld)
 project(${PROJECT} LANGUAGES CXX C)
 
+# find_package(libevent REQUIRED)
+# find_library(LIBEVENT_LIBRARY NAMES event)
+
 set(SOURCES 
     main.cpp
     loader.cpp
@@ -20,4 +23,5 @@ set(SOURCES
     )
 
 add_executable(${PROJECT} ${SOURCES})
+# target_link_libraries(${PROJECT} ${LIBEVENT_LIBRARIES})
 target_link_libraries(${PROJECT} -static)

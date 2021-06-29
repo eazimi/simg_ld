@@ -118,6 +118,8 @@ typedef struct __MemRange
   void *end;
 } MemRange_t;
 
+using namespace std;
+
 class Loader
 {
 public:
@@ -126,7 +128,7 @@ public:
     void init(int argc);
 
 private:
-    void runRtld(const char* ldname, const char* app);
+    void runRtld(const char* ldname, int param_index, int param_count);
     void get_elf_interpreter(int fd, Elf64_Addr *cmd_entry, char* elf_interpreter, void *ld_so_addr);
     DynObjInfo_t safeLoadLib(const char *name);
     void* load_elf_interpreter(int fd, char *elf_interpreter, Elf64_Addr *ld_so_entry, void *ld_so_addr, DynObjInfo_t *info);
@@ -135,7 +137,7 @@ private:
     void* sbrkWrapper(intptr_t increment);
     int writeLhInfoToFile();
     off_t get_symbol_offset(int fd, const char *ldname, const char *symbol);
-    void * createNewStackForRtld(const DynObjInfo_t *info, const char *appName);
+    void * createNewStackForRtld(const DynObjInfo_t *info, int param_index, int param_count);
     void getStackRegion(Area *stack);
     int readMapsLine(int mapsfd, Area *area);
     char readChar(int fd);
@@ -143,7 +145,7 @@ private:
     char readHex(int fd, VA *virt_mem_addr);
     void getProcStatField(enum Procstat_t type, char *out, size_t len);
     void* deepCopyStack(void *newStack, const void *origStack, size_t len,
-              const void *newStackEnd, const void *origStackEnd, const DynObjInfo_t *info, const char *appName);
+              const void *newStackEnd, const void *origStackEnd, const DynObjInfo_t *info, int param_index, int param_count);
     ElfW(auxv_t)* GET_AUXV_ADDR(const char **env);
     void* GET_ENV_ADDR(char **argv, int argc);
     void* GET_ARGV_ADDR(const void* stackEnd);
@@ -166,6 +168,7 @@ private:
     std::vector<MmapInfo_t> mmaps {};
     std::unique_ptr<MemRange_t> g_range = nullptr;
     std::vector<MemRange_t> mmaps_range {};
+    int processCommandLineArgs(const char **argv, pair<int, int> &param_count) const;
 };
 
 #endif
