@@ -9,7 +9,6 @@ SET(CMAKE_COLOR_MAKEFILE ON)
 set(CMAKE_BUILD_TYPE Debug)
 
 PROJECT(simg_ld LANGUAGES CXX C)
-FIND_LIBRARY(LIBEVENT_LIBRARY NAMES event)
 
 add_executable(simg_ld 
     simg_ld.cpp
@@ -18,7 +17,7 @@ add_executable(simg_ld
     switch_context.h
     switch_context.cpp    
     )
-target_link_libraries(simg_ld ${LIBEVENT_LIBRARY})
+target_link_libraries(simg_ld -static)
 
 add_executable(app_loader 
     app_loader_main.cpp

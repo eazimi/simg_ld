@@ -80,9 +80,6 @@ const char *colors[] = {KNRM, KRED, KBLU, KGRN, KYEL};
 #define CLEAN_FOR_64_BIT(args...) CLEAN_FOR_64_BIT_HELPER(args)
 
 #define LD_NAME "/lib64/ld-linux-x86-64.so.2"
-#define SIMG_LD_ENV_SOCKET_FD "SIMG_LD_SOCKET_FD"
-
-void (*handler) (int, short, void*);
 
 // This function returns the entry point of the ld.so executable given
 // the library handle
@@ -155,61 +152,32 @@ void Loader::run(char ** argv)
     exit(-1);
   }
 
-  int sockets[2];
-  assert(socketpair(AF_LOCAL, SOCK_SEQPACKET | SOCK_CLOEXEC, 0, sockets) != -1);
-
   pid_t pid = fork();
   assert(pid >= 0);
   if (pid == 0) // child
   {
-    close(sockets[1]);
-    int fdflags = fcntl(sockets[0], F_GETFD, 0);
-    assert(fdflags != -1 && fcntl(sockets[0], F_SETFD, fdflags & ~FD_CLOEXEC) != -1);
-    setenv(SIMG_LD_ENV_SOCKET_FD, std::to_string(sockets[0]).c_str(), 1);
-
     sleep(1);
     ptrace(PTRACE_TRACEME, 0, nullptr, nullptr);
+    // while(true);
     runRtld(ldname, 0, param_count.first);
   }
   else // parent
   {
-    close(sockets[0]);
-    sockfd = sockets[1];
-
-    auto* base = event_base_new();
-    base_.reset(base);
-
-    auto* socket_event = event_new(base, sockfd, EV_READ | EV_PERSIST, handler, nullptr);
-    event_add(socket_event, nullptr);
-    socket_event_.reset(socket_event);
-
-    auto* signal_event = event_new(base, SIGCHLD, EV_SIGNAL | EV_PERSIST, handler, nullptr);
-    event_add(signal_event, nullptr);
-    signal_event_.reset(signal_event);
-
     int status;
     auto wait_ret = waitpid(pid, &status, 0);
     // while (true)
     // {
-    //   auto wait_ret = waitpid(pid, &status, WNOHANG);      
+    //   auto wait_ret = waitpid(pid, &status, WNOHANG);
     //   // std::cout << "wait_ret " << wait_ret << " child pid " << pid << std::endl;
     //   if (wait_ret > 0)
     //   {
     //     std::cout << "wait_ret " << wait_ret << " child pid " << pid << " status " << status << std::endl;
     //     break;
     //   }
-      runRtld(ldname, param_index, param_count.second);
-    }
-}
 
-void Loader::dispatch() const
-{
-  event_base_dispatch(base_.get());
-}
-
-void Loader::break_loop() const
-{
-  event_base_loopbreak(base_.get());
+    // while(true);
+    runRtld(ldname, param_index, param_count.second);
+  }
 }
 
 // This function loads in ld.so, sets up a separate stack for it, and jumps
