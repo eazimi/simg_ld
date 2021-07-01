@@ -8,16 +8,8 @@ set(CMAKE_EXE_LINKER_FLAGS "-static-libgcc -static-libstdc++")
 SET(CMAKE_COLOR_MAKEFILE ON)
 set(CMAKE_BUILD_TYPE Debug)
 
-# set(PROJECT simg_ld)
-# project(${PROJECT} LANGUAGES CXX C)
-project(simg_ld LANGUAGES CXX C)
-
-FIND_PATH(LIBEVENT_INCLUDE_DIR NAMES event2/event.h)
-# FIND_PACKAGE(libevent REQUIRED)
+PROJECT(simg_ld LANGUAGES CXX C)
 FIND_LIBRARY(LIBEVENT_LIBRARY NAMES event)
-SET(LIBEVENT_LIBRARIES "${LIBEVENT_LIBRARY}")
-# INCLUDE_DIRECTORIES(${LIBEVENT_INCLUDE_DIR})
-# MESSAGE(STATUS "Found libevent2 includes: ${LIBEVENT2_INCLUDE_DIR}/event2/event.h")
 
 add_executable(simg_ld 
     simg_ld.cpp
@@ -26,12 +18,7 @@ add_executable(simg_ld
     switch_context.h
     switch_context.cpp    
     )
-
-# add_executable(${PROJECT} ${SOURCES})
-# add_executable(simg_ld ${SOURCES})
-# target_link_libraries(${PROJECT} ${LIBEVENT_LIBRARIES})
-target_link_libraries(simg_ld ${LIBEVENT_LIBRARIES})
-# target_link_libraries(${PROJECT} -static)
+target_link_libraries(simg_ld ${LIBEVENT_LIBRARY})
 
 add_executable(app_loader 
     app_loader_main.cpp
