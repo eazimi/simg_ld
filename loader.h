@@ -6,6 +6,7 @@
 #include <link.h>
 #include <vector>
 #include <memory>
+#include <event2/event.h>
 
 typedef struct __DynObjInfo
 {
@@ -169,6 +170,13 @@ private:
     std::unique_ptr<MemRange_t> g_range = nullptr;
     std::vector<MemRange_t> mmaps_range {};
     int processCommandLineArgs(const char **argv, pair<int, int> &param_count) const;
+
+    int sockfd;
+    std::unique_ptr<event_base, decltype(&event_base_free)> base_{nullptr, &event_base_free};
+    std::unique_ptr<event, decltype(&event_free)> socket_event_{nullptr, &event_free};
+    std::unique_ptr<event, decltype(&event_free)> signal_event_{nullptr, &event_free};
+    void dispatch() const;
+    void break_loop() const;
 };
 
 #endif
