@@ -19,16 +19,22 @@ SET(LIBEVENT_LIBRARIES "${LIBEVENT_LIBRARY}")
 # INCLUDE_DIRECTORIES(${LIBEVENT_INCLUDE_DIR})
 # MESSAGE(STATUS "Found libevent2 includes: ${LIBEVENT2_INCLUDE_DIR}/event2/event.h")
 
-set(SOURCES 
+add_executable(simg_ld 
     simg_ld.cpp
     loader.cpp
     loader.h
     switch_context.h
-    switch_context.cpp
+    switch_context.cpp    
     )
 
 # add_executable(${PROJECT} ${SOURCES})
-add_executable(simg_ld ${SOURCES})
+# add_executable(simg_ld ${SOURCES})
 # target_link_libraries(${PROJECT} ${LIBEVENT_LIBRARIES})
 target_link_libraries(simg_ld ${LIBEVENT_LIBRARIES})
 # target_link_libraries(${PROJECT} -static)
+
+add_executable(app_loader 
+    app_loader_main.cpp
+    app_loader.h
+    app_loader.cpp
+    app_loader_global.hpp)
