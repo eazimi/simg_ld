@@ -12,8 +12,8 @@
 #include <asm/prctl.h>
 #include <syscall.h>
 #include <fstream>
-// #include <sys/ptrace.h>
-// #include <sys/wait.h>
+#include <sys/ptrace.h>
+#include <sys/wait.h>
 #include <sys/socket.h>
 #include <event2/event.h>
 #include "switch_context.h"
@@ -153,8 +153,8 @@ void Loader::run(char ** argv)
     exit(-1);
   }
 
-  // int sockets[2];
-  // assert(socketpair(AF_LOCAL, SOCK_SEQPACKET | SOCK_CLOEXEC, 0, sockets) != -1);
+  int sockets[2];
+  assert(socketpair(AF_LOCAL, SOCK_SEQPACKET | SOCK_CLOEXEC, 0, sockets) != -1);
 
   pid_t pid = fork();
   assert(pid >= 0);
@@ -165,20 +165,15 @@ void Loader::run(char ** argv)
     // int fdflags = fcntl(sockets[0], F_GETFD, 0);
     // assert(fdflags != -1 && fcntl(sockets[0], F_SETFD, fdflags & ~FD_CLOEXEC) != -1);
     // setenv(SIMG_LD_ENV_SOCKET_FD, std::to_string(sockets[0]).c_str(), 1);
-    
 
-
-
-
-
-
-    // ptrace(PTRACE_TRACEME, 0, nullptr, nullptr);
     // runRtld(ldname, argv[2]);
     // while(true);
     // sleep(5);
     // raise(SIGINT);
     // std::cout << "after raining SIGINT in child" << std::endl;
     // while(true);
+    sleep(1);
+    ptrace(PTRACE_TRACEME, 0, nullptr, nullptr);
     runRtld(ldname, 0, param_count.first);
     // std::cout << "child exit" << std::endl;
   }
@@ -206,10 +201,21 @@ void Loader::run(char ** argv)
     //     // }
     //     break;
     //   }
-    runRtld(ldname, param_index, param_count.second);
-    // }
-    // std::cout << "after waitpid" << std::endl;
-  }
+    // while(true);
+
+    int status;
+    auto wait_ret = waitpid(pid, &status, 0);
+    // while (true)
+    // {
+    //   auto wait_ret = waitpid(pid, &status, WNOHANG);      
+    //   // std::cout << "wait_ret " << wait_ret << " child pid " << pid << std::endl;
+    //   if (wait_ret > 0)
+    //   {
+    //     std::cout << "wait_ret " << wait_ret << " child pid " << pid << " status " << status << std::endl;
+    //     break;
+    //   }
+      runRtld(ldname, param_index, param_count.second);
+    }
 }
 
 // This function loads in ld.so, sets up a separate stack for it, and jumps
@@ -826,7 +832,17 @@ void Loader::unlockReservedMemRegion()
 }
 
 void Loader::lockFreeMemRegions()
-{  
+{
+  // auto mmap_start = (void *)0x10000;
+  // auto mmap_end = (void *)0x400000;
+  // auto mmap_length = (unsigned long)mmap_end - (unsigned long)mmap_start;
+  // void *mmap_ret = mmap(mmap_start, mmap_length, PROT_NONE, MAP_PRIVATE | MAP_ANONYMOUS | MAP_FIXED, -1, 0);
+  // if (mmap_ret == MAP_FAILED)
+  // {
+  //   DLOG(ERROR, "failed to lock the free spot from 0x1000. %s\n", strerror(errno));
+  //   exit(-1);
+  // }
+
   mmaps_range.clear();
   Area area;
   int mapsfd = open("/proc/self/maps", O_RDONLY);
