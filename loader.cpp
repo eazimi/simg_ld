@@ -1081,27 +1081,3 @@ void *Loader::mmapWrapper(void *addr, size_t length, int prot, int flags, int fd
   ret = mmap(addr, length, prot, flags, fd, offset);
   return ret;
 }
-
-// Writes out the lhinfo global object to a file. Returns 0 on success,
-// -1 on failure.
-int Loader::writeLhInfoToFile()
-{
-  size_t rc = 0;
-  char filename[100];
-  snprintf(filename, 100, "./lhInfo_%d", getpid());
-  int fd = open(filename, O_WRONLY | O_CREAT, 0644);
-  if (fd < 0)
-  {
-    DLOG(ERROR, "Could not create addr.bin file. Error: %s", strerror(errno));
-    return -1;
-  }
-
-  rc = write(fd, &lhInfo, sizeof(lhInfo));
-  if (rc < sizeof(lhInfo))
-  {
-    DLOG(ERROR, "Wrote fewer bytes than expected to addr.bin. Error: %s", strerror(errno));
-    rc = -1;
-  }
-  close(fd);
-  return rc;
-}
