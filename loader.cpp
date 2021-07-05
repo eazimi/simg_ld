@@ -258,8 +258,6 @@ void *Loader::createNewHeapForRtld(const DynObjInfo_t *info)
   // Add a guard page before the start of heap; this protects
   // the heap from getting merged with a "previous" region.
   mprotect(addr, PAGE_SIZE, PROT_NONE);
-  __curbrk = ((void *)((VA)addr + PAGE_SIZE));
-  __endOfHeap = (void *)ROUND_UP((void *)((VA)addr + heapSize));
   return addr;
 }
 
