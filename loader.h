@@ -136,7 +136,6 @@ private:
     void *mmapWrapper(void *addr, size_t length, int prot, int flags, int fd, off_t offset);
     void* sbrkWrapper(intptr_t increment);
     int writeLhInfoToFile();
-    off_t get_symbol_offset(int fd, const char *ldname, const char *symbol);
     void * createNewStackForRtld(const DynObjInfo_t *info, int param_index, int param_count);
     void getStackRegion(Area *stack);
     int readMapsLine(int mapsfd, Area *area);

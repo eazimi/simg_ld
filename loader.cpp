@@ -774,15 +774,7 @@ DynObjInfo_t Loader::safeLoadLib(const char *ld_name)
   ld_so_fd = open(elf_interpreter, O_RDONLY);
   assert(ld_so_fd != -1);
   info.baseAddr = load_elf_interpreter(ld_name, &info);
-  off_t mmap_offset;
-  off_t sbrk_offset;
-  mmap_offset = get_symbol_offset(ld_so_fd, ld_name, "mmap");
-  sbrk_offset = get_symbol_offset(ld_so_fd, ld_name, "sbrk");
 
-  assert(mmap_offset);
-  assert(sbrk_offset);
-  info.mmapAddr = (VA)info.baseAddr + mmap_offset;
-  info.sbrkAddr = (VA)info.baseAddr + sbrk_offset;
   // FIXME: The ELF Format manual says that we could pass the ld_so_fd to ld.so,
   //   and it would use that to load it.
   close(ld_so_fd);
@@ -1243,72 +1235,4 @@ int Loader::writeLhInfoToFile()
   }
   close(fd);
   return rc;
-}
-
-// Returns offset of symbol, or -1 on failure.
-off_t Loader::get_symbol_offset(int fd, const char *ldname, const char *symbol)
-{
-  int i;
-  ssize_t rc;
-  Elf64_Shdr sect_hdr;
-  Elf64_Shdr symtab;
-  Elf64_Sym symtab_entry;
-  // FIXME: This needs to be dynamic
-  char strtab[100000];
-
-  int symtab_found = 0;
-
-  // Reset fd to beginning and parse file header
-  lseek(fd, 0, SEEK_SET);
-  Elf64_Ehdr elf_hdr;
-  rc = read(fd, &elf_hdr, sizeof(elf_hdr));
-  assert(rc == sizeof(elf_hdr));
-
-  // Get start of symbol table and string table
-  Elf64_Off shoff = elf_hdr.e_shoff;
-  lseek(fd, shoff, SEEK_SET);
-  for (i = 0; i < elf_hdr.e_shnum; i++)
-  {
-    rc = read(fd, &sect_hdr, sizeof sect_hdr);
-    assert(rc == sizeof(sect_hdr));
-    if (sect_hdr.sh_type == SHT_SYMTAB)
-    {
-      symtab = sect_hdr;
-      symtab_found = 1;
-    }
-    if (sect_hdr.sh_type == SHT_STRTAB)
-    {
-      int fd2 = open(ldname, O_RDONLY);
-      lseek(fd2, sect_hdr.sh_offset, SEEK_SET);
-      if (sect_hdr.sh_size > sizeof(strtab))
-      {
-        DLOG(ERROR, "sect_hdr.sh_size =  %zu, sizeof(strtab) = %zu\n",
-             sect_hdr.sh_size, sizeof(strtab));
-        assert(0);
-      }
-      assert(sect_hdr.sh_size = read(fd2, strtab, sect_hdr.sh_size));
-      close(fd2);
-    }
-  }
-
-  if (!symtab_found)
-  {
-    DLOG(ERROR, "Failed to find symbol table in %s\n", ldname);
-    return -1;
-  }
-
-  // Move to beginning of symbol table
-  lseek(fd, symtab.sh_offset, SEEK_SET);
-  for (; lseek(fd, 0, SEEK_CUR) - symtab.sh_offset < symtab.sh_size;)
-  {
-    rc = read(fd, &symtab_entry, sizeof symtab_entry);
-    assert(rc == sizeof(symtab_entry));
-    if (strcmp(strtab + symtab_entry.st_name, symbol) == 0)
-    {
-      // found address as offset from base address
-      return symtab_entry.st_value;
-    }
-  }
-  DLOG(ERROR, "Failed to find symbol (%s) in %s\n", symbol, ldname);
-  return -1;
 }
