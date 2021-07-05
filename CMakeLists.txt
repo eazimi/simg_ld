@@ -10,7 +10,7 @@ set(CMAKE_BUILD_TYPE Debug)
 PROJECT(simg_ld LANGUAGES CXX C)
 
 add_executable(simg_ld 
-    simg_ld.cpp
+    simg_ld_main.cpp
     loader.cpp
     loader.h
     switch_context.h
