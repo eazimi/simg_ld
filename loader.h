@@ -123,9 +123,9 @@ using namespace std;
 class Loader
 {
 public:
-    explicit Loader() { g_range = std::make_unique<MemRange_t>(); }    
-    void run(char **argv);
-    void init(int argc);
+    explicit Loader() { g_range = std::make_unique<MemRange_t>(); }
+    int init(const char **argv, pair<int, int> &param_count);
+    void run(int param_index, const pair<int, int> &param_count);    
 
 private:
     void runRtld(const char* ldname, int param_index, int param_count);

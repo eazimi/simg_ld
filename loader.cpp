@@ -99,24 +99,6 @@ void *Loader::getEntryPoint(DynObjInfo_t info)
   return info.entryPoint;
 }
 
-void Loader::init(int argc)
-{
-  // if (argc < 3)
-  if (argc < 2)
-  {
-    DLOG(ERROR, "Usage: ./simg_ld /PATH/TO/APP1 /PATH/TO/APP2]\n");
-    exit(-1);
-  }
-
-  _parent_pid = getpid();
-
-  // reserve some 2 GB in the address space, lock remained free areas
-  reserveMemRegion();
-  lockFreeMemRegions();
-  unlockReservedMemRegion();
-  // printMappedAreas();
-}
-
 // returns the parent's parameters start index in the command line parameters
 int Loader::processCommandLineArgs(const char **argv, pair<int, int> &param_count) const
 {
@@ -151,18 +133,30 @@ int Loader::processCommandLineArgs(const char **argv, pair<int, int> &param_coun
   return ++index;
 }
 
-void Loader::run(char ** argv)
+int Loader::init(const char **argv, pair<int, int> &param_count)
 {
-  char *ldname = (char *)LD_NAME;
-  char *app = nullptr;
-
-  pair<int, int> param_count;
-  int param_index = processCommandLineArgs((const char**) argv, param_count);
+  auto param_index = processCommandLineArgs(argv, param_count);
   if(param_index == -1)
-  {
-    DLOG(ERROR, "Command line parameters are invalid, exiting ...\n");
+  {    
+    DLOG(ERROR, "Command line parameters are invalid\n");
+    DLOG(ERROR, "Usage: ./simg_ld /PATH/TO/APP1 APP1_PARAMS -- /PATH/TO/APP2 APP2_PARAMS]\n");
+    DLOG(ERROR, "exiting ...\n");
     exit(-1);
   }
+
+  _parent_pid = getpid();
+
+  // reserve some 2 GB in the address space, lock remained free areas
+  reserveMemRegion();
+  lockFreeMemRegions();
+  unlockReservedMemRegion();
+
+  return param_index;
+}
+
+void Loader::run(int param_index, const pair<int, int> &param_count)
+{
+  char *ldname = (char *)LD_NAME;
 
   std::stringstream ss;
   ss << "[PARENT], before fork: getpid() = " << std::dec << getpid();
