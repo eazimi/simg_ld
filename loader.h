@@ -153,7 +153,6 @@ private:
     
     LowerHalfInfo_t lhInfo;
     std::unique_ptr<MemRange_t> g_range = nullptr;
-    std::vector<MemRange_t> mmaps_range {};
     int processCommandLineArgs(const char **argv, pair<int, int> &param_count) const;
 };
 

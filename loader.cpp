@@ -773,17 +773,7 @@ void Loader::unlockReservedMemRegion()
 
 void Loader::lockFreeMemRegions()
 {
-  // auto mmap_start = (void *)0x10000;
-  // auto mmap_end = (void *)0x400000;
-  // auto mmap_length = (unsigned long)mmap_end - (unsigned long)mmap_start;
-  // void *mmap_ret = mmap(mmap_start, mmap_length, PROT_NONE, MAP_PRIVATE | MAP_ANONYMOUS | MAP_FIXED, -1, 0);
-  // if (mmap_ret == MAP_FAILED)
-  // {
-  //   DLOG(ERROR, "failed to lock the free spot from 0x1000. %s\n", strerror(errno));
-  //   exit(-1);
-  // }
-
-  mmaps_range.clear();
+  std::vector<MemRange_t> mmaps_range {};
   Area area;
   int mapsfd = open("/proc/self/maps", O_RDONLY);
   bool firstLine = true;
