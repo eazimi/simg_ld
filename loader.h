@@ -144,7 +144,6 @@ private:
     void patchAuxv(ElfW(auxv_t) *av, unsigned long phnum, unsigned long phdr, unsigned long entry);
     void* createNewHeapForRtld(const DynObjInfo_t *info);
     void* getEntryPoint(DynObjInfo_t info);
-    unsigned long getStackPtr();
     void reserveMemRegion();
     void lockFreeMemRegions();
     void unlockReservedMemRegion();
