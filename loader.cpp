@@ -756,28 +756,13 @@ void Loader::patchAuxv(ElfW(auxv_t) * av, unsigned long phnum,
 }
 
 DynObjInfo_t Loader::safeLoadLib(const char *ld_name)
-{
-  void *ld_so_addr = NULL;
-  DynObjInfo_t info = {0};
+{  
+  Elf64_Addr cmd_entry;
+  get_interpreter_entry(ld_name, &cmd_entry);
 
-  int ld_so_fd;
-  Elf64_Addr cmd_entry, ld_so_entry;
-  char elf_interpreter[MAX_ELF_INTERP_SZ];
-
-  int cmd_fd = open(ld_name, O_RDONLY);
-  get_elf_interpreter(cmd_fd, &cmd_entry, elf_interpreter, ld_so_addr);
-  // FIXME: The ELF Format manual says that we could pass the cmd_fd to ld.so,
-  //   and it would use that to load it.
-  close(cmd_fd);
-  strncpy(elf_interpreter, ld_name, sizeof elf_interpreter);
-
-  ld_so_fd = open(elf_interpreter, O_RDONLY);
-  assert(ld_so_fd != -1);
+  DynObjInfo_t info {};
   info.baseAddr = load_elf_interpreter(ld_name, &info);
 
-  // FIXME: The ELF Format manual says that we could pass the ld_so_fd to ld.so,
-  //   and it would use that to load it.
-  close(ld_so_fd);
   info.entryPoint = (void *)((unsigned long)info.baseAddr +
                              (unsigned long)cmd_entry);
   return info;
@@ -1103,10 +1088,13 @@ unsigned long Loader::map_elf_interpreter_load_segment(int fd, Elf64_Ehdr *ehdr,
 	return (unsigned long)base;
 }
 
-void Loader::get_elf_interpreter(int fd, Elf64_Addr *cmd_entry, char *elf_interpreter, void *ld_so_addr)
+void Loader::get_interpreter_entry(const char *ld_name, Elf64_Addr *cmd_entry)
 {
   int rc;
   char e_ident[EI_NIDENT];
+
+  int fd = open(ld_name, O_RDONLY);
+  assert(fd != -1);
 
   rc = read(fd, e_ident, sizeof(e_ident));
   assert(rc == sizeof(e_ident));
