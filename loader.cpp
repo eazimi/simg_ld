@@ -824,50 +824,6 @@ void Loader::lockFreeMemRegions()
 
 void Loader::reserveMemRegion()
 {
-  bool lh_initialized = false;
-  // proc-stat returns the address of argc on the stack.
-  unsigned long argcAddr = getStackPtr();
-
-  // argv[0] is 1 LP_SIZE ahead of argc, i.e., startStack + sizeof(void*)
-  // Stack End is 1 LP_SIZE behind argc, i.e., startStack - sizeof(void*)
-  void *stack_end = (void *)(argcAddr - sizeof(unsigned long));
-  int argc = *(int *)argcAddr;
-  char **argv = (char **)(argcAddr + sizeof(unsigned long));
-  char **ev = &argv[argc + 1];
-
-  // Copied from glibc source
-  ElfW(auxv_t) * auxvec;
-  char **evp = ev;
-  while (*evp++ != NULL)
-    ;
-  auxvec = (ElfW(auxv_t) *)evp;
-
-  setReservedMemRange();
-  void *region = mmapWrapper(g_range->start, (unsigned long)g_range->end - (unsigned long)g_range->start, PROT_READ | PROT_WRITE,
-                             MAP_GROWSDOWN | MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
-  if (region == MAP_FAILED)
-  {
-    DLOG(ERROR, "Failed to mmap region: %s\n", strerror(errno));
-  }
-}
-
-void Loader::printMappedAreas()
-{
-  std::cout << ((getpid() == _parent_pid) ? "[PARENT], " : "[CHILD], ") << "printing mmaped regions ..." << std::endl;
-  std::string maps_path = "/proc/self/maps";
-  std::filebuf fb;
-  std::string line;
-  if(fb.open(maps_path, std::ios_base::in))
-  {
-    std::istream is(&fb);
-    while (std::getline(is, line))
-      std::cout << line << std::endl; 
-    fb.close();
-  }
-}
-
-void Loader::setReservedMemRange()
-{
   Area area;
   bool found = false;
   int mapsfd = open("/proc/self/maps", O_RDONLY);
@@ -891,8 +847,29 @@ void Loader::setReservedMemRange()
     g_range->start = (VA)area.addr - _3_GB;
     g_range->end = (VA)area.addr - _1_GB;
   }
-
   // std::cout << "setReservedMemRange(): start = " << std::hex << g_range->start << " , end = " << g_range->end << std::endl;
+  
+  void *region = mmapWrapper(g_range->start, (unsigned long)g_range->end - (unsigned long)g_range->start, PROT_READ | PROT_WRITE,
+                             MAP_GROWSDOWN | MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+  if (region == MAP_FAILED)
+  {
+    DLOG(ERROR, "Failed to mmap region: %s\n", strerror(errno));
+  }
+}
+
+void Loader::printMappedAreas()
+{
+  std::cout << ((getpid() == _parent_pid) ? "[PARENT], " : "[CHILD], ") << "printing mmaped regions ..." << std::endl;
+  std::string maps_path = "/proc/self/maps";
+  std::filebuf fb;
+  std::string line;
+  if(fb.open(maps_path, std::ios_base::in))
+  {
+    std::istream is(&fb);
+    while (std::getline(is, line))
+      std::cout << line << std::endl; 
+    fb.close();
+  }
 }
 
 // Returns the address of argc on the stack

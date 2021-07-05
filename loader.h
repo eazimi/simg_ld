@@ -156,7 +156,6 @@ private:
     void reserveMemRegion();
     void lockFreeMemRegions();
     void unlockReservedMemRegion();
-    void setReservedMemRange();
     void printMappedAreas();
     
     LowerHalfInfo_t lhInfo;
