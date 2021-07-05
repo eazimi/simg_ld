@@ -130,8 +130,8 @@ public:
 private:
     void runRtld(const char* ldname, int param_index, int param_count);
     void get_elf_interpreter(int fd, Elf64_Addr *cmd_entry, char* elf_interpreter, void *ld_so_addr);
-    DynObjInfo_t safeLoadLib(const char *name);
-    void* load_elf_interpreter(int fd, char *elf_interpreter, Elf64_Addr *ld_so_entry, void *ld_so_addr, DynObjInfo_t *info);
+    DynObjInfo_t safeLoadLib(const char *ld_name);
+    void* load_elf_interpreter(const char *elf_interpreter, DynObjInfo_t *info);
     unsigned long map_elf_interpreter_load_segment(int fd, Elf64_Ehdr *ehdr, Elf64_Phdr *phdr);
     void *mmapWrapper(void *addr, size_t length, int prot, int flags, int fd, off_t offset);
     void* sbrkWrapper(intptr_t increment);

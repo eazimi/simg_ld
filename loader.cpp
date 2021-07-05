@@ -139,7 +139,7 @@ int Loader::init(const char **argv, pair<int, int> &param_count)
   if(param_index == -1)
   {    
     DLOG(ERROR, "Command line parameters are invalid\n");
-    DLOG(ERROR, "Usage: ./simg_ld /PATH/TO/APP1 APP1_PARAMS -- /PATH/TO/APP2 APP2_PARAMS]\n");
+    DLOG(ERROR, "Usage: ./simg_ld /PATH/TO/APP1 [APP1_PARAMS] -- /PATH/TO/APP2 [APP2_PARAMS]\n");
     DLOG(ERROR, "exiting ...\n");
     exit(-1);
   }
@@ -755,7 +755,7 @@ void Loader::patchAuxv(ElfW(auxv_t) * av, unsigned long phnum,
   }
 }
 
-DynObjInfo_t Loader::safeLoadLib(const char *name)
+DynObjInfo_t Loader::safeLoadLib(const char *ld_name)
 {
   void *ld_so_addr = NULL;
   DynObjInfo_t info = {0};
@@ -764,21 +764,20 @@ DynObjInfo_t Loader::safeLoadLib(const char *name)
   Elf64_Addr cmd_entry, ld_so_entry;
   char elf_interpreter[MAX_ELF_INTERP_SZ];
 
-  int cmd_fd = open(name, O_RDONLY);
+  int cmd_fd = open(ld_name, O_RDONLY);
   get_elf_interpreter(cmd_fd, &cmd_entry, elf_interpreter, ld_so_addr);
   // FIXME: The ELF Format manual says that we could pass the cmd_fd to ld.so,
   //   and it would use that to load it.
   close(cmd_fd);
-  strncpy(elf_interpreter, name, sizeof elf_interpreter);
+  strncpy(elf_interpreter, ld_name, sizeof elf_interpreter);
 
   ld_so_fd = open(elf_interpreter, O_RDONLY);
   assert(ld_so_fd != -1);
-  info.baseAddr = load_elf_interpreter(ld_so_fd, elf_interpreter,
-                                       &ld_so_entry, ld_so_addr, &info);
+  info.baseAddr = load_elf_interpreter(ld_name, &info);
   off_t mmap_offset;
   off_t sbrk_offset;
-  mmap_offset = get_symbol_offset(ld_so_fd, name, "mmap");
-  sbrk_offset = get_symbol_offset(ld_so_fd, name, "sbrk");
+  mmap_offset = get_symbol_offset(ld_so_fd, ld_name, "mmap");
+  sbrk_offset = get_symbol_offset(ld_so_fd, ld_name, "sbrk");
 
   assert(mmap_offset);
   assert(sbrk_offset);
@@ -998,39 +997,39 @@ unsigned long Loader::getStackPtr()
   return startstack;
 }
 
-void *Loader::load_elf_interpreter(int fd, char *elf_interpreter,
-                                   Elf64_Addr *ld_so_entry, void *ld_so_addr,
-                                   DynObjInfo_t *info)
+void *Loader::load_elf_interpreter(const char *elf_interpreter , DynObjInfo_t *info)
 {
+  int ld_so_fd = open(elf_interpreter, O_RDONLY);
+  assert(ld_so_fd != -1);
+
   char e_ident[EI_NIDENT];
   int rc;
-  int firstTime = 1;
 
-  rc = read(fd, e_ident, sizeof(e_ident));
+  rc = read(ld_so_fd, e_ident, sizeof(e_ident));
   assert(rc == sizeof(e_ident));
   assert(strncmp(e_ident, ELFMAG, sizeof(ELFMAG) - 1) == 0);
   // FIXME:  Add support for 32-bit ELF later
   assert(e_ident[EI_CLASS] == ELFCLASS64);
 
   // Reset fd to beginning and parse file header
-  lseek(fd, 0, SEEK_SET);
+  lseek(ld_so_fd, 0, SEEK_SET);
   Elf64_Ehdr elf_hdr;
-  rc = read(fd, &elf_hdr, sizeof(elf_hdr));
+  rc = read(ld_so_fd, &elf_hdr, sizeof(elf_hdr));
   assert(rc == sizeof(elf_hdr));
 
   // Find ELF interpreter
   int phoff = elf_hdr.e_phoff;
-  lseek(fd, phoff, SEEK_SET);
+  lseek(ld_so_fd, phoff, SEEK_SET);
 
   Elf64_Phdr *phdr;
   Elf64_Ehdr *ehdr = &elf_hdr;
   ssize_t sz = ehdr->e_phnum * sizeof(Elf64_Phdr);
   phdr = (Elf64_Phdr*) alloca(sz);
 
-  if (read(fd, phdr, sz) != sz)
+  if (read(ld_so_fd, phdr, sz) != sz)
     DLOG(ERROR, "can't read program header");
 
-  unsigned long baseAddr = map_elf_interpreter_load_segment(fd, ehdr, phdr);
+  unsigned long baseAddr = map_elf_interpreter_load_segment(ld_so_fd, ehdr, phdr);
 
   info->phnum = elf_hdr.e_phnum;
   info->phdr = (VA)baseAddr + elf_hdr.e_phoff;
