@@ -16,6 +16,7 @@
 #include <sys/wait.h>
 #include <sys/socket.h>
 #include <csignal>
+#include <sstream>
 #include "switch_context.h"
 #include "limits.h"
 
@@ -81,6 +82,16 @@ const char *colors[] = {KNRM, KRED, KBLU, KGRN, KYEL};
 
 #define LD_NAME "/lib64/ld-linux-x86-64.so.2"
 
+static pid_t _parent_pid;
+
+static void pause_run(std::string message)
+{
+  std::cout << message << std::endl;
+  std::cout << "press a key to continue ..." << std::endl;
+  std::string str; 
+  std::cin >> str;
+}
+
 // This function returns the entry point of the ld.so executable given
 // the library handle
 void *Loader::getEntryPoint(DynObjInfo_t info)
@@ -96,6 +107,8 @@ void Loader::init(int argc)
     DLOG(ERROR, "Usage: ./simg_ld /PATH/TO/APP1 /PATH/TO/APP2]\n");
     exit(-1);
   }
+
+  _parent_pid = getpid();
 
   // reserve some 2 GB in the address space, lock remained free areas
   reserveMemRegion();
@@ -143,7 +156,6 @@ void Loader::run(char ** argv)
   char *ldname = (char *)LD_NAME;
   char *app = nullptr;
 
-  vector<string> argv1, argv2;
   pair<int, int> param_count;
   int param_index = processCommandLineArgs((const char**) argv, param_count);
   if(param_index == -1)
@@ -152,30 +164,23 @@ void Loader::run(char ** argv)
     exit(-1);
   }
 
+  std::stringstream ss;
+  ss << "[PARENT], before fork: getpid() = " << std::dec << getpid();
+  pause_run(ss.str());
+
   pid_t pid = fork();
   assert(pid >= 0);
+
   if (pid == 0) // child
   {
     sleep(1);
     ptrace(PTRACE_TRACEME, 0, nullptr, nullptr);
-    // while(true);
     runRtld(ldname, 0, param_count.first);
   }
   else // parent
   {
     int status;
     auto wait_ret = waitpid(pid, &status, 0);
-    // while (true)
-    // {
-    //   auto wait_ret = waitpid(pid, &status, WNOHANG);
-    //   // std::cout << "wait_ret " << wait_ret << " child pid " << pid << std::endl;
-    //   if (wait_ret > 0)
-    //   {
-    //     std::cout << "wait_ret " << wait_ret << " child pid " << pid << " status " << status << std::endl;
-    //     break;
-    //   }
-
-    // while(true);
     runRtld(ldname, param_index, param_count.second);
   }
 }
@@ -188,12 +193,14 @@ void Loader::runRtld(const char* ldname, int param_index, int param_count)
 
   // Load RTLD (ld.so)  
   DynObjInfo_t ldso = safeLoadLib(ldname);
+  std::cout << ((getpid() == _parent_pid) ? "[PARENT], " : "[CHILD], ") << "lsdo.baseAddr: " 
+            << std::hex << ldso.baseAddr << std::endl;
+
   if (ldso.baseAddr == NULL || ldso.entryPoint == NULL)
   {
     DLOG(ERROR, "Error loading the runtime loader (%s). Exiting...\n", ldname);
     return;
   }
-  // DLOG(INFO, "New ld.so loaded at: %p\n", ldso.baseAddr);
 
   // Pointer to the ld.so entry point
   void *ldso_entrypoint = getEntryPoint(ldso);
@@ -205,7 +212,6 @@ void Loader::runRtld(const char* ldname, int param_index, int param_count)
     DLOG(ERROR, "Error creating new stack for RTLD. Exiting...\n");
     exit(-1);
   }
-  // DLOG(INFO, "New stack start at: %p\n", newStack);
 
   // Create new heap region to be used by RTLD
   void *newHeap = createNewHeapForRtld(&ldso);
@@ -214,10 +220,14 @@ void Loader::runRtld(const char* ldname, int param_index, int param_count)
     DLOG(ERROR, "Error creating new heap for RTLD. Exiting...\n");
     exit(-1);
   }
-  // DLOG(INFO, "New heap mapped at: %p\n", newHeap);
+
+  std::stringstream ss;
+  ss << ((getpid() == _parent_pid) ? "[PARENT], " : "[CHILD], ") 
+     << "before jumping to sp: " << std::dec << getpid();  
+  pause_run(ss.str());
+  printMappedAreas();
 
   // Change the stack pointer to point to the new stack and jump into ld.so
-  // TODO: Clean up all the registers?
   asm volatile(CLEAN_FOR_64_BIT(mov %0, %%esp;)
                :
                : "g"(newStack)
@@ -873,6 +883,7 @@ void Loader::reserveMemRegion()
 
 void Loader::printMappedAreas()
 {
+  std::cout << ((getpid() == _parent_pid) ? "[PARENT], " : "[CHILD], ") << "printing mmaped regions ..." << std::endl;
   std::string maps_path = "/proc/self/maps";
   std::filebuf fb;
   std::string line;
@@ -880,7 +891,7 @@ void Loader::printMappedAreas()
   {
     std::istream is(&fb);
     while (std::getline(is, line))
-      std::cout << line.substr(0, line.find(" ")) << std::endl; 
+      std::cout << line << std::endl; 
     fb.close();
   }
 }
@@ -905,15 +916,13 @@ void Loader::setReservedMemRange()
   }
   close(mapsfd);
 
-  // if (found && (g_range == nullptr))
   if (found)
   {
-    // g_range->start = (VA)area.addr - TWO_GB;
     g_range->start = (VA)area.addr - _3_GB;
     g_range->end = (VA)area.addr - _1_GB;
   }
 
-  std::cout << "setReservedMemRange(): start = " << std::hex << g_range->start << " , end = " << g_range->end << std::endl;
+  // std::cout << "setReservedMemRange(): start = " << std::hex << g_range->start << " , end = " << g_range->end << std::endl;
 }
 
 // Returns the address of argc on the stack
