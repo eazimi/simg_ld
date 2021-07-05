@@ -1086,29 +1086,10 @@ void Loader::get_interpreter_entry(const char *ld_name, Elf64_Addr *cmd_entry)
 
 void *Loader::mmapWrapper(void *addr, size_t length, int prot, int flags, int fd, off_t offset)
 {
-  void *ret = MAP_FAILED;
-  JUMP_TO_LOWER_HALF(lhInfo.lhFsAddr);
-  if (offset & MMAP_OFF_MASK)
-  {
-    errno = EINVAL;
-    return ret;
-  }
+  void *ret = nullptr;
   length = ROUND_UP(length);
   ret = mmap(addr, length, prot, flags, fd, offset);
-  if (ret != MAP_FAILED)
-  {
-    addRegionToMMaps(ret, length);
-  }
-  RETURN_TO_UPPER_HALF();
   return ret;
-}
-
-void Loader::addRegionToMMaps(void *addr, size_t length)
-{
-  MmapInfo_t newRegion;
-  newRegion.addr = addr;
-  newRegion.len = length;
-  mmaps.push_back(newRegion);
 }
 
 // Writes out the lhinfo global object to a file. Returns 0 on success,

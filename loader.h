@@ -106,12 +106,6 @@ typedef union ProcMapsArea
 
 typedef ProcMapsArea Area;
 
-typedef struct __MmapInfo
-{
-  void *addr;
-  size_t len;
-} MmapInfo_t;
-
 typedef struct __MemRange
 {
   void *start;
@@ -150,7 +144,6 @@ private:
     void* GET_ARGC_ADDR(const void* stackEnd);
     void patchAuxv(ElfW(auxv_t) *av, unsigned long phnum, unsigned long phdr, unsigned long entry);
     void* createNewHeapForRtld(const DynObjInfo_t *info);
-    void addRegionToMMaps(void *addr, size_t length);
     void* getEntryPoint(DynObjInfo_t info);
     unsigned long getStackPtr();
     void reserveMemRegion();
@@ -159,7 +152,6 @@ private:
     void printMappedAreas();
     
     LowerHalfInfo_t lhInfo;
-    std::vector<MmapInfo_t> mmaps {};
     std::unique_ptr<MemRange_t> g_range = nullptr;
     std::vector<MemRange_t> mmaps_range {};
     int processCommandLineArgs(const char **argv, pair<int, int> &param_count) const;
