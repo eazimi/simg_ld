@@ -151,7 +151,6 @@ private:
     void patchAuxv(ElfW(auxv_t) *av, unsigned long phnum, unsigned long phdr, unsigned long entry);
     void* createNewHeapForRtld(const DynObjInfo_t *info);
     void addRegionToMMaps(void *addr, size_t length);
-    void* __sbrkWrapper(intptr_t increment);
     void* getEntryPoint(DynObjInfo_t info);
     unsigned long getStackPtr();
     void reserveMemRegion();
