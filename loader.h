@@ -17,21 +17,6 @@ typedef struct __DynObjInfo
   void *sbrkAddr;
 } DynObjInfo_t;
 
-typedef struct __LowerHalfInfo
-{
-  void *lhSbrk;
-  void *lhMmap;
-  void *lhMunmap;
-  void *lhDlsym;
-  unsigned long lhFsAddr;
-  void *lhMmapListFptr;
-  void *uhEndofHeapFptr;
-  void *lhGetDeviceHeapFptr;
-  void *lhCopyToCudaPtrFptr;
-  void *lhDeviceHeap;
-  void *getFatCubinHandle;
-} LowerHalfInfo_t;
-
 // Based on the entries in /proc/<pid>/stat as described in `man 5 proc`
 enum Procstat_t
 {
@@ -149,7 +134,6 @@ private:
     void unlockReservedMemRegion();
     void printMappedAreas();
     
-    LowerHalfInfo_t lhInfo;
     std::unique_ptr<MemRange_t> g_range = nullptr;
     int processCommandLineArgs(const char **argv, pair<int, int> &param_count) const;
 };
