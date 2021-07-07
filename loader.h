@@ -7,7 +7,7 @@
 #include <vector>
 #include <memory>
 
-typedef struct __DynObjInfo
+typedef struct
 {
   void *baseAddr;
   void *entryPoint;
