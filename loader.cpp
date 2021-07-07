@@ -104,7 +104,7 @@ int Loader::processCommandLineArgs(const char **argv, pair<int, int> &param_coun
 {
   vector<string> argv1, argv2;
   auto *args = &argv1;
-  bool seperatorFounded = false;
+  bool separatorFound = false;
   auto i {0};
   auto index {0};
   argv++;
@@ -113,8 +113,8 @@ int Loader::processCommandLineArgs(const char **argv, pair<int, int> &param_coun
   {
     if(strcmp(*argv, (char*)"--") == 0)
     {
-      seperatorFounded = (!seperatorFounded) ? true : false;
-      if(!seperatorFounded)
+      separatorFound = (!separatorFound) ? true : false;
+      if(!separatorFound)
         return -1;
       index = i;
       args = &argv2;
@@ -126,7 +126,7 @@ int Loader::processCommandLineArgs(const char **argv, pair<int, int> &param_coun
   }
 
   // todo: check for more condition, like app's parameter count
-  if(!seperatorFounded || argv1.empty() || argv2.empty())
+  if(!separatorFound || argv1.empty() || argv2.empty())
     return -1;
   param_count.first = argv1.size(); // child process
   param_count.second = argv2.size(); // parent process
