@@ -174,9 +174,13 @@ void Loader::run(int param_index, const pair<int, int> &param_count)
   }
   else // parent
   {
+    int status;
+    auto wait_ret = waitpid(pid, &status, 0);
+    
     ptrace(PTRACE_SETOPTIONS, pid, nullptr, PTRACE_O_TRACEEXIT); // I also want to know about the child's exit()
     ptrace(PTRACE_CONT, pid, 0, 0); // Let's awake the child now
 
+    wait_ret = waitpid(pid, &status, 0);
     runRtld(ldname, param_index, param_count.second);
   }
 }
