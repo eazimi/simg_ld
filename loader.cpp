@@ -448,24 +448,22 @@ void Loader::getProcStatField(enum Procstat_t type, char *out, size_t len)
 {
   const char *procPath = "/proc/self/stat";
   char sbuf[1024] = {0};
-  int field_counter = 0;
-  char *field_str = nullptr;
-  int fd, num_read;
 
-  fd = open(procPath, O_RDONLY);
+  int fd = open(procPath, O_RDONLY);
   if (fd < 0)
   {
     DLOG(ERROR, "Failed to open %s. Error: %s\n", procPath, strerror(errno));
     return;
   }
 
-  num_read = read(fd, sbuf, sizeof sbuf - 1);
+  int num_read = read(fd, sbuf, sizeof sbuf - 1);
   close(fd);
   if (num_read <= 0)
     return;
   sbuf[num_read] = '\0';
 
-  field_str = strtok(sbuf, " ");
+  char* field_str = strtok(sbuf, " ");
+  int field_counter = 0;
   while (field_str && field_counter != type)
   {
     field_str = strtok(nullptr, " ");
