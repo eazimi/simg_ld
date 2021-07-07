@@ -167,14 +167,16 @@ void Loader::run(int param_index, const pair<int, int> &param_count)
 
   if (pid == 0) // child
   {
-    sleep(1);
-    ptrace(PTRACE_TRACEME, 0, nullptr, nullptr);
+    ptrace(PTRACE_TRACEME, 0, nullptr, nullptr); // Parent will get notified of everything
+    raise(SIGSTOP); // Wait for the parent to awake me
+
     runRtld(ldname, 0, param_count.first);
   }
   else // parent
   {
-    int status;
-    auto wait_ret = waitpid(pid, &status, 0);
+    ptrace(PTRACE_SETOPTIONS, pid, nullptr, PTRACE_O_TRACEEXIT); // I also want to know about the child's exit()
+    ptrace(PTRACE_CONT, pid, 0, 0); // Let's awake the child now
+
     runRtld(ldname, param_index, param_count.second);
   }
 }
@@ -230,6 +232,9 @@ void Loader::runRtld(const char* ldname, int param_index, int param_count)
                :
                : "g"(ldso_entrypoint)
                : "memory");
+
+  DLOG(ERROR, "Error: RTLD returned instead of passing the control to the created stack. Panic...\n");
+  exit(-1);
 }
 
 // This function allocates a new heap for (the possibly second) ld.so.

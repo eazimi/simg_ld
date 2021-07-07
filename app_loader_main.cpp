@@ -14,6 +14,5 @@ int main(int argc, char **argv, char **env)
     std::cout << "[CHILD], memory layout AFTER unmmap ..." << std::endl;
     appLoader->memUnmapRanges();    
     appLoader->printMMappedRanges();
-    raise(SIGINT);
     return 0;
 }
