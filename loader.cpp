@@ -92,13 +92,6 @@ static void pause_run(std::string message)
   std::cin >> str;
 }
 
-// This function returns the entry point of the ld.so executable given
-// the library handle
-void *Loader::getEntryPoint(DynObjInfo_t info)
-{
-  return info.entryPoint;
-}
-
 // returns the parent's parameters start index in the command line parameters
 int Loader::processCommandLineArgs(const char **argv, pair<int, int> &param_count) const
 {
@@ -192,21 +185,18 @@ void Loader::runRtld(const char* ldname, int param_index, int param_count)
   int rc = -1;
 
   // Load RTLD (ld.so)  
-  DynObjInfo_t ldso = safeLoadLib(ldname);
+  DynObjInfo ldso = safeLoadLib(ldname);
   std::cout << ((getpid() == _parent_pid) ? "[PARENT], " : "[CHILD], ") << "lsdo.baseAddr: " 
-            << std::hex << ldso.baseAddr << std::endl;
+            << std::hex << ldso.get_base_addr() << std::endl;
 
-  if (ldso.baseAddr == NULL || ldso.entryPoint == NULL)
+  if (ldso.get_base_addr() == NULL || ldso.get_entry_point() == NULL)
   {
     DLOG(ERROR, "Error loading the runtime loader (%s). Exiting...\n", ldname);
     return;
   }
 
-  // Pointer to the ld.so entry point
-  void *ldso_entrypoint = getEntryPoint(ldso);
-
   // Create new stack region to be used by RTLD
-  void *newStack = createNewStackForRtld(&ldso, param_index, param_count);
+  void *newStack = createNewStackForRtld(ldso, param_index, param_count);
   if (!newStack)
   {
     DLOG(ERROR, "Error creating new stack for RTLD. Exiting...\n");
@@ -214,7 +204,7 @@ void Loader::runRtld(const char* ldname, int param_index, int param_count)
   }
 
   // Create new heap region to be used by RTLD
-  void *newHeap = createNewHeapForRtld(&ldso);
+  void *newHeap = createNewHeapForRtld();
   if (!newHeap)
   {
     DLOG(ERROR, "Error creating new heap for RTLD. Exiting...\n");
@@ -226,6 +216,9 @@ void Loader::runRtld(const char* ldname, int param_index, int param_count)
      << "before jumping to sp: " << std::dec << getpid();  
   pause_run(ss.str());
   printMappedAreas();
+
+  // Pointer to the ld.so entry point
+  void *ldso_entrypoint = ldso.get_entry_point();
 
   // Change the stack pointer to point to the new stack and jump into ld.so
   asm volatile(CLEAN_FOR_64_BIT(mov %0, %%esp;)
@@ -246,7 +239,7 @@ void Loader::runRtld(const char* ldname, int param_index, int param_count)
 //
 // Returns the start address of the new heap on success, or NULL on
 // failure.
-void *Loader::createNewHeapForRtld(const DynObjInfo_t *info)
+void *Loader::createNewHeapForRtld()
 {
   const uint64_t heapSize = 100 * PAGE_SIZE;
 
@@ -488,7 +481,7 @@ void Loader::getProcStatField(enum Procstat_t type, char *out, size_t len)
 //  1. Creates a new stack region to be used for initialization of RTLD (ld.so)
 //  2. Deep copies the original stack (from the kernel) in the new stack region
 //  3. Returns a pointer to the beginning of stack in the new stack region
-void *Loader::createNewStackForRtld(const DynObjInfo_t *info, int param_index, int param_count)
+void *Loader::createNewStackForRtld(const DynObjInfo &info, int param_index, int param_count)
 {
   Area stack;
   char stackEndStr[20] = {0};
@@ -582,12 +575,11 @@ ElfW(auxv_t) * Loader::GET_AUXV_ADDR(const char **env)
 // in the new stack region.
 void *Loader::deepCopyStack(void *newStack, const void *origStack, size_t len,
                             const void *newStackEnd, const void *origStackEnd,
-                            const DynObjInfo_t *info, int param_index, int param_count)
+                            const DynObjInfo &info, int param_index, int param_count)
 {
   // Return early if any pointer is NULL
   if (!newStack || !origStack ||
-      !newStackEnd || !origStackEnd ||
-      !info)
+      !newStackEnd || !origStackEnd)
   {
     return nullptr;
   }
@@ -720,9 +712,9 @@ void *Loader::deepCopyStack(void *newStack, const void *origStack, size_t len,
   // it has these entries AT_PHNUM, AT_PHDR, and AT_ENTRY that correspond
   // to kernel-loader. So, we atch the aux vector in the new stack to
   // correspond to the new binary: the freshly loaded ld.so.
-  patchAuxv(newAuxv, info->phnum,
-            (uintptr_t)info->phdr,
-            (uintptr_t)info->entryPoint);
+  patchAuxv(newAuxv, info.get_phnum(),
+            (uintptr_t)info.get_phdr(),
+            (uintptr_t)info.get_entry_point());
 
   // printf("newArgv[-2]: %lu \n", (unsigned long)&newArgv[0]);
 
@@ -760,16 +752,15 @@ void Loader::patchAuxv(ElfW(auxv_t) * av, unsigned long phnum,
   }
 }
 
-DynObjInfo_t Loader::safeLoadLib(const char *ld_name)
+DynObjInfo Loader::safeLoadLib(const char *ld_name)
 {  
   Elf64_Addr cmd_entry;
   get_interpreter_entry(ld_name, &cmd_entry);
-
-  DynObjInfo_t info {};
-  info.baseAddr = load_elf_interpreter(ld_name, &info);
-
-  info.entryPoint = (void *)((unsigned long)info.baseAddr +
-                             (unsigned long)cmd_entry);
+  DynObjInfo info;
+  auto baseAddr = load_elf_interpreter(ld_name, info);
+  auto entryPoint = (void *)((unsigned long)baseAddr + (unsigned long)cmd_entry);
+  info.set_base_addr(baseAddr);
+  info.set_entry_point(entryPoint);
   return info;
 }
 
@@ -867,7 +858,7 @@ void Loader::printMappedAreas()
   }
 }
 
-void *Loader::load_elf_interpreter(const char *elf_interpreter , DynObjInfo_t *info)
+void *Loader::load_elf_interpreter(const char *elf_interpreter, DynObjInfo &info)
 {
   int ld_so_fd = open(elf_interpreter, O_RDONLY);
   assert(ld_so_fd != -1);
@@ -901,8 +892,8 @@ void *Loader::load_elf_interpreter(const char *elf_interpreter , DynObjInfo_t *i
 
   unsigned long baseAddr = map_elf_interpreter_load_segment(ld_so_fd, ehdr, phdr);
 
-  info->phnum = elf_hdr.e_phnum;
-  info->phdr = (VA)baseAddr + elf_hdr.e_phoff;
+  info.set_phnum(elf_hdr.e_phnum);
+  info.set_phdr((VA)baseAddr + elf_hdr.e_phoff);
   return (void*)baseAddr;
 }
 
