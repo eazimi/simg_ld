@@ -754,8 +754,7 @@ void Loader::patchAuxv(ElfW(auxv_t) * av, unsigned long phnum,
 
 DynObjInfo Loader::safeLoadLib(const char *ld_name)
 {  
-  Elf64_Addr cmd_entry;
-  get_interpreter_entry(ld_name, &cmd_entry);
+  Elf64_Addr cmd_entry = getInterpreterEntry(ld_name);
   DynObjInfo info;
   auto baseAddr = load_elf_interpreter(ld_name, info);
   auto entryPoint = (void *)((unsigned long)baseAddr + (unsigned long)cmd_entry);
@@ -972,7 +971,7 @@ unsigned long Loader::map_elf_interpreter_load_segment(int fd, Elf64_Ehdr *ehdr,
 	return (unsigned long)base;
 }
 
-void Loader::get_interpreter_entry(const char *ld_name, Elf64_Addr *cmd_entry)
+Elf64_Addr Loader::getInterpreterEntry(const char *ld_name)
 {
   int rc;
   char e_ident[EI_NIDENT];
@@ -990,7 +989,7 @@ void Loader::get_interpreter_entry(const char *ld_name, Elf64_Addr *cmd_entry)
   Elf64_Ehdr elf_hdr;
   rc = read(fd, &elf_hdr, sizeof(elf_hdr));
   assert(rc == sizeof(elf_hdr));
-  *cmd_entry = elf_hdr.e_entry;
+  return elf_hdr.e_entry;
 }
 
 void *Loader::mmapWrapper(void *addr, size_t length, int prot, int flags, int fd, off_t offset)

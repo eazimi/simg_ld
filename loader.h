@@ -99,7 +99,7 @@ public:
 
 private:
     void runRtld(const char* ldname, int param_index, int param_count);
-    void get_interpreter_entry(const char *ld_name, Elf64_Addr *cmd_entry);
+    Elf64_Addr getInterpreterEntry(const char *ld_name);
     DynObjInfo safeLoadLib(const char *ld_name);
     void* load_elf_interpreter(const char *elf_interpreter, DynObjInfo &info);
     unsigned long map_elf_interpreter_load_segment(int fd, Elf64_Ehdr *ehdr, Elf64_Phdr *phdr);
