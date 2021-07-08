@@ -6,6 +6,7 @@
 #include <fcntl.h>
 #include <cstring>
 #include <fstream>
+#include <sstream>
 #include <iostream>
 
 using namespace std;
@@ -38,26 +39,46 @@ void AppLoader::memUnmapRanges()
   string line;
   if (fb.open(maps_path, ios_base::in))
   {
-    istream is(&fb);
-    bool found = false;
+    istream is(&fb);    
     while (getline(is, line))
     {
-      found = (line.find(SIMG_LD) != string::npos) || (line.find(HEAP) != string::npos) || (line.find(STACK) != string::npos) ||
-              (line.find(VVAR) != string::npos) || (line.find(VDSO) != string::npos) || (line.find(VSYSCALL) != string::npos);
+      bool found = false;
+      
+      // HEAP, STACK, VVAR, VDSO, VSYSCALL
+      auto pos = line.rfind(SIMG_LD);
+      auto str_len = SIMG_LD.length();
+      if(pos != string::npos)
+      {
+        if(pos+str_len == line.length())
+          found = true;
+      }
+
       if (found)
       {
         auto addr_range_str = line.substr(0, line.find(" "));
-        auto dash_index = line.find('-');
-        auto start_str = addr_range_str.substr(0, dash_index);
-        auto end_str = addr_range_str.substr(dash_index+1);
-        auto dash_index_last = line.find_last_of(" ");        
-        start_str += "0x";
-        end_str += "0x";
-        auto start_int = strtol(start_str.c_str(), nullptr , 0);
-        auto end_int = strtol(end_str.c_str(), nullptr, 0);
-        auto ret = munmap((void *)((unsigned long)start_int), (unsigned long)(end_int-start_int));
+        char *addr_range_carr = (char *)addr_range_str.c_str();
+        auto dash_index = strchr(addr_range_carr, '-');
+        char start_addr_str[32];
+        auto copy_len = dash_index-addr_range_carr;
+        strncpy(start_addr_str, addr_range_carr, copy_len);
+        start_addr_str[copy_len] = '\0';
+        char *end_addr_str = dash_index+1;
+
+        std::stringstream ss; 
+        ss << std::hex << start_addr_str;
+        unsigned long start_addr_long;
+        ss >> start_addr_long;
+        ss.clear();
+        ss << std::hex << end_addr_str;
+        unsigned long end_addr_long;
+        ss >> end_addr_long;
+
+        auto ret = munmap((void *)start_addr_long, end_addr_long-start_addr_long);
         if(ret != 0)
-          cout << "munmap was not successful: " << strerror(errno) << endl;
+        {
+          cout << "munmap was not successful: " << strerror(errno) << " # " << std::hex << start_addr_long << " - " << std::hex << end_addr_long << endl;
+          cout << line << endl;
+        }
       }
     }
     fb.close();
