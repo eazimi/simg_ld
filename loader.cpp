@@ -994,8 +994,7 @@ Elf64_Addr Loader::getInterpreterEntry(const char *ld_name)
 
 void *Loader::mmapWrapper(void *addr, size_t length, int prot, int flags, int fd, off_t offset)
 {
-  void *ret = nullptr;
   length = ROUND_UP(length);
-  ret = mmap(addr, length, prot, flags, fd, offset);
+  void *ret = mmap(addr, length, prot, flags, fd, offset);
   return ret;
 }
