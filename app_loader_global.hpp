@@ -5,6 +5,11 @@
 #include <errno.h>
 #include <unistd.h>
 #include <stdio.h>
+#include <string>
+#include <sstream>
+#include <cstring>
+
+using namespace std;
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ////    DEFINE - MACRO   //////////////////////////////////////////////////////////////////////////////////////////////
@@ -167,6 +172,44 @@ static char readHex(int fd, VA *virt_mem_addr)
     }
     *virt_mem_addr = (VA)v;
     return c;
+}
+
+static bool getUnmmapAddressRange(string line, string token, pair<unsigned long, unsigned long> &addr_long)
+{
+    bool found = false;
+    auto pos = line.rfind(token);
+    auto token_len = token.length();
+    if (pos != string::npos)
+    {
+        if (pos + token_len == line.length())
+            found = true;
+    }
+
+    if (found)
+    {
+        auto addr_range_str = line.substr(0, line.find(" "));
+        char *addr_range_carr = (char *)addr_range_str.c_str();
+        auto dash_index = strchr(addr_range_carr, '-');
+        char start_addr_str[32];
+        auto copy_len = dash_index - addr_range_carr;
+        strncpy(start_addr_str, addr_range_carr, copy_len);
+        start_addr_str[copy_len] = '\0';
+        char *end_addr_str = dash_index + 1;
+
+        std::stringstream ss;
+        ss << std::hex << start_addr_str;
+        unsigned long start_addr_long;
+        ss >> start_addr_long;
+        ss.clear();
+        ss << std::hex << end_addr_str;
+        unsigned long end_addr_long;
+        ss >> end_addr_long;
+
+        addr_long.first = start_addr_long;
+        addr_long.second = end_addr_long;
+    }
+
+    return found;
 }
 
 #endif
