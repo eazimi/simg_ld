@@ -7,7 +7,9 @@
 #include <stdio.h>
 #include <string>
 #include <sstream>
+#include <fstream>
 #include <cstring>
+#include <vector>
 
 using namespace std;
 
@@ -210,6 +212,29 @@ static bool getUnmmapAddressRange(string line, string token, pair<unsigned long,
     }
 
     return found;
+}
+
+static vector<pair<unsigned long, unsigned long>> getRanges(string maps_path, vector<string> tokens)
+{
+    filebuf fb;
+    string line;
+    vector<pair<unsigned long, unsigned long>> result;
+    if(fb.open(maps_path, ios_base::in))
+    {
+        istream is(&fb);
+        while(getline(is, line))
+        {
+            for(auto it:tokens)
+            {
+                pair<unsigned long, unsigned long> addr_long;
+                auto found = getUnmmapAddressRange(line, it, addr_long);
+                if(found)
+                    result.emplace_back(std::move(addr_long));
+            }
+        }
+        fb.close();
+    }
+    return result;
 }
 
 #endif

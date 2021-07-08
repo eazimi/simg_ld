@@ -4,7 +4,6 @@
 #include <limits.h>
 #include <sys/mman.h>
 #include <fcntl.h>
-#include <fstream>
 #include <iostream>
 
 using namespace std;
@@ -26,36 +25,15 @@ void AppLoader::printMMappedRanges()
 void AppLoader::memUnmapRanges()
 {
   const string maps_path = "/proc/self/maps";
-  const string SIMG_LD = "/simg_ld";
-  const string HEAP = "[heap]";
-  const string STACK = "[stack]";
-  const string VVAR = "[vvar]";
-  const string VDSO = "[vdso]";
-  const string VSYSCALL = "[vsyscall]";
-
-  filebuf fb;
-  string line;
-  if (fb.open(maps_path, ios_base::in))
+  vector<string> tokens {"/simg_ld", "[heap]", "[stack]", "[vvar]", "[vdso]"};
+  vector<pair<unsigned long, unsigned long>> all_addr = getRanges(maps_path, tokens);
+  for (auto it : all_addr)
   {
-    istream is(&fb);    
-    while (getline(is, line))
-    {
-      // HEAP, STACK, VVAR, VDSO, VSYSCALL
-      pair<unsigned long, unsigned long> addr_long;
-      bool found = getUnmmapAddressRange(line, SIMG_LD, addr_long);
-
-      if (found)
-      {
-        auto ret = munmap((void *)addr_long.first, addr_long.second-addr_long.first);
-        if(ret != 0)
-        {
-          cout << "munmap was not successful: " << strerror(errno) << " # " << std::hex << addr_long.first << " - " << std::hex << addr_long.second << endl;
-          cout << line << endl;
-        }
-      }
-    }
-    fb.close();
+    auto ret = munmap((void *)it.first, it.second - it.first);
+    if (ret != 0)
+      cout << "munmap was not successful: " << strerror(errno) << " # " << std::hex << it.first << " - " << std::hex << it.second << endl;
   }
+
 }
 
 void AppLoader::getReservedMemRange(std::pair<void *, void *> &range)
