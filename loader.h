@@ -18,7 +18,7 @@ private:
     DynObjInfo load_lsdo(const char *ld_name);
     void* load_elf_interpreter(const char *elf_interpreter, DynObjInfo &info);
     unsigned long map_elf_interpreter_load_segment(int fd, Elf64_Ehdr *ehdr, Elf64_Phdr *phdr);
-    void *createNewStackForRtld(const DynObjInfo &info, int param_index, int param_count);
+    void *create_new_stack_for_ldso(const DynObjInfo &info, int param_index, int param_count);
     void* createNewHeapForRtld();
     void reserve_memeory_region();
     void hide_free_memoty_regions();

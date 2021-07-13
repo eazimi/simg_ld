@@ -116,7 +116,7 @@ void Loader::run_rtld(const char* ldname, int param_index, int param_count)
   }
 
   // Create new stack region to be used by RTLD
-  void *newStack = createNewStackForRtld(ldso, param_index, param_count);
+  void *newStack = create_new_stack_for_ldso(ldso, param_index, param_count);
   if (!newStack)
   {
     DLOG(ERROR, "Error creating new stack for RTLD. Exiting...\n");
@@ -187,7 +187,7 @@ void *Loader::createNewHeapForRtld()
 //  1. Creates a new stack region to be used for initialization of RTLD (ld.so)
 //  2. Deep copies the original stack (from the kernel) in the new stack region
 //  3. Returns a pointer to the beginning of stack in the new stack region
-void *Loader::createNewStackForRtld(const DynObjInfo &info, int param_index, int param_count)
+void *Loader::create_new_stack_for_ldso(const DynObjInfo &info, int param_index, int param_count)
 {
   Area stack;
   char stackEndStr[20] = {0};
