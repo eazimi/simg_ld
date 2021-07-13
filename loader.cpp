@@ -249,7 +249,7 @@ void *Loader::createNewStackForRtld(const DynObjInfo &info, int param_index, int
 
 DynObjInfo Loader::safeLoadLib(const char *ld_name)
 {  
-  Elf64_Addr cmd_entry = getInterpreterEntry(ld_name);
+  Elf64_Addr cmd_entry = get_interpreter_entry(ld_name);
   DynObjInfo info;
   auto baseAddr = load_elf_interpreter(ld_name, info);
   auto entryPoint = (void *)((unsigned long)baseAddr + (unsigned long)cmd_entry);
@@ -452,7 +452,7 @@ unsigned long Loader::map_elf_interpreter_load_segment(int fd, Elf64_Ehdr *ehdr,
 	return (unsigned long)base;
 }
 
-Elf64_Addr Loader::getInterpreterEntry(const char *ld_name)
+Elf64_Addr Loader::get_interpreter_entry(const char *ld_name)
 {
   int rc;
   char e_ident[EI_NIDENT];
