@@ -4,10 +4,12 @@ set(CMAKE_CXX_COMPILER "/usr/bin/g++")
 
 set(BUILD_SHARED_LIBS OFF)
 set(CMAKE_EXE_LINKER_FLAGS "-static-libgcc -static-libstdc++")
-SET(CMAKE_COLOR_MAKEFILE ON)
+set(CMAKE_COLOR_MAKEFILE ON)
 set(CMAKE_BUILD_TYPE Debug)
 
-PROJECT(simg_ld LANGUAGES CXX C)
+project(simg_ld LANGUAGES CXX C)
+
+include_directories(include)
 
 add_executable(simg_ld 
     simg_ld_main.cpp
@@ -18,7 +20,7 @@ add_executable(simg_ld
     dyn_obj_info.hpp
     channel.hpp
     channel.cpp
-    loader_global.hpp
+    include/loader_global.hpp
     )
 target_link_libraries(simg_ld -static)
 
@@ -26,4 +28,4 @@ add_executable(app_loader
     app_loader_main.cpp
     app_loader.h
     app_loader.cpp
-    app_loader_global.hpp)
+    include/app_loader_global.hpp)
