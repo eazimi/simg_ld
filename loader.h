@@ -29,7 +29,6 @@ private:
     void *mmapWrapper(void *addr, size_t length, int prot, int flags, int fd, off_t offset);
     void *createNewStackForRtld(const DynObjInfo &info, int param_index, int param_count);
     void getStackRegion(Area *stack);
-    int readMapsLine(int mapsfd, Area *area);
     void getProcStatField(enum Procstat_t type, char *out, size_t len);
     void* deepCopyStack(void *newStack, const void *origStack, size_t len,
               const void *newStackEnd, const void *origStackEnd, const DynObjInfo &info, int param_index, int param_count);

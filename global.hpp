@@ -11,6 +11,7 @@
 #include <cstring>
 #include <vector>
 #include <iostream>
+#include <sys/mman.h>
 
 using namespace std;
 
@@ -25,9 +26,9 @@ using namespace std;
 
 #define PAGE_SIZE 0x1000LL
 
-#define _1_GB    0x40000000
+#define _1_GB 0x40000000
 #define _1500_MB 0x60000000
-#define _3_GB    0xc0000000
+#define _3_GB 0xc0000000
 
 // Logging levels
 #define NOISE 3 // Noise!
@@ -62,8 +63,8 @@ static const char *colors[] = {KNRM, KRED, KBLU, KGRN, KYEL};
 #define ROUND_PG(x) (((x) + (ALIGN)) & ~(ALIGN))
 #define TRUNC_PG(x) ((x) & ~(ALIGN))
 #define PFLAGS(x) ((((x)&PF_R) ? PROT_READ : 0) |  \
-				   (((x)&PF_W) ? PROT_WRITE : 0) | \
-				   (((x)&PF_X) ? PROT_EXEC : 0))
+                   (((x)&PF_W) ? PROT_WRITE : 0) | \
+                   (((x)&PF_X) ? PROT_EXEC : 0))
 #define LOAD_ERR ((unsigned long)-1)
 
 // TODO: This is very x86-64 specific; support other architectures??
@@ -156,8 +157,8 @@ typedef ProcMapsArea Area;
 
 typedef struct
 {
-  void *start;
-  void *end;
+    void *start;
+    void *end;
 } MemoryArea_t;
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -168,10 +169,10 @@ static pid_t _parent_pid;
 
 static void pause_run(std::string message)
 {
-  std::cout << message << std::endl;
-  std::cout << "press a key to continue ..." << std::endl;
-  std::string str; 
-  std::cin >> str;
+    std::cout << message << std::endl;
+    std::cout << "press a key to continue ..." << std::endl;
+    std::string str;
+    std::cin >> str;
 }
 
 /* Read non-null character, return null if EOF */
@@ -274,16 +275,16 @@ static vector<pair<unsigned long, unsigned long>> getRanges(string maps_path, ve
     filebuf fb;
     string line;
     vector<pair<unsigned long, unsigned long>> result;
-    if(fb.open(maps_path, ios_base::in))
+    if (fb.open(maps_path, ios_base::in))
     {
         istream is(&fb);
-        while(getline(is, line))
+        while (getline(is, line))
         {
-            for(auto it:tokens)
+            for (auto it : tokens)
             {
                 pair<unsigned long, unsigned long> addr_long;
                 auto found = getUnmmapAddressRange(line, it, addr_long);
-                if(found)
+                if (found)
                     result.emplace_back(std::move(addr_long));
             }
         }
@@ -294,7 +295,7 @@ static vector<pair<unsigned long, unsigned long>> getRanges(string maps_path, ve
 
 static void print_mmapped_ranges(pid_t pid = -1)
 {
-    if(pid != -1)
+    if (pid != -1)
         std::cout << ((pid == _parent_pid) ? "[PARENT], " : "[CHILD], ") << "printing mmaped regions ..." << std::endl;
     std::string maps_path = "/proc/self/maps";
     std::filebuf fb;
@@ -306,6 +307,110 @@ static void print_mmapped_ranges(pid_t pid = -1)
             std::cout << line << std::endl;
         fb.close();
     }
+}
+
+static int readMapsLine(int mapsfd, Area *area)
+{
+    char c, rflag, sflag, wflag, xflag;
+    int i;
+    off_t offset;
+    unsigned int long devmajor, devminor, inodenum;
+    VA startaddr, endaddr;
+
+    c = readHex(mapsfd, &startaddr);
+    if (c != '-')
+    {
+        if ((c == 0) && (startaddr == 0))
+            return (0);
+        goto skipeol;
+    }
+    c = readHex(mapsfd, &endaddr);
+    if (c != ' ')
+        goto skipeol;
+    if (endaddr < startaddr)
+        goto skipeol;
+
+    rflag = c = readChar(mapsfd);
+    if ((c != 'r') && (c != '-'))
+        goto skipeol;
+    wflag = c = readChar(mapsfd);
+    if ((c != 'w') && (c != '-'))
+        goto skipeol;
+    xflag = c = readChar(mapsfd);
+    if ((c != 'x') && (c != '-'))
+        goto skipeol;
+    sflag = c = readChar(mapsfd);
+    if ((c != 's') && (c != 'p'))
+        goto skipeol;
+
+    c = readChar(mapsfd);
+    if (c != ' ')
+        goto skipeol;
+
+    c = readHex(mapsfd, (VA *)&offset);
+    if (c != ' ')
+        goto skipeol;
+    area->offset = offset;
+
+    c = readHex(mapsfd, (VA *)&devmajor);
+    if (c != ':')
+        goto skipeol;
+    c = readHex(mapsfd, (VA *)&devminor);
+    if (c != ' ')
+        goto skipeol;
+    c = readDec(mapsfd, (VA *)&inodenum);
+    area->name[0] = '\0';
+    while (c == ' ')
+        c = readChar(mapsfd);
+    if (c == '/' || c == '[')
+    { /* absolute pathname, or [stack], [vdso], etc. */
+        i = 0;
+        do
+        {
+            area->name[i++] = c;
+            if (i == sizeof area->name)
+                goto skipeol;
+            c = readChar(mapsfd);
+        } while (c != '\n');
+        area->name[i] = '\0';
+    }
+
+    if (c != '\n')
+        goto skipeol;
+
+    area->addr = startaddr;
+    area->endAddr = endaddr;
+    area->size = endaddr - startaddr;
+    area->prot = 0;
+    if (rflag == 'r')
+        area->prot |= PROT_READ;
+    if (wflag == 'w')
+        area->prot |= PROT_WRITE;
+    if (xflag == 'x')
+        area->prot |= PROT_EXEC;
+    area->flags = MAP_FIXED;
+    if (sflag == 's')
+        area->flags |= MAP_SHARED;
+    if (sflag == 'p')
+        area->flags |= MAP_PRIVATE;
+    if (area->name[0] == '\0')
+        area->flags |= MAP_ANONYMOUS;
+
+    area->devmajor = devmajor;
+    area->devminor = devminor;
+    area->inodenum = inodenum;
+    return (1);
+
+skipeol:
+    fprintf(stderr, "ERROR: readMapsLine*: bad maps line <%c", c);
+    while ((c != '\n') && (c != '\0'))
+    {
+        c = readChar(mapsfd);
+        printf("%c", c);
+    }
+    printf(">\n");
+    abort();
+    return 0; /* NOTREACHED : stop compiler warning */
 }
 
 #endif

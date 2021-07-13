@@ -12,7 +12,6 @@ class AppLoader
         void memUnmapRanges();
 
     private:
-        int readMapsLine(int mapsfd, Area *area);
         std::unique_ptr<MemoryArea_t> reserved_area;
 };
 
