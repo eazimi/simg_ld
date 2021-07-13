@@ -1,7 +1,7 @@
 #include "loader.h"
 
 // returns the parent's parameters start index in the command line parameters
-int Loader::processCommandLineArgs(const char **argv, pair<int, int> &param_count) const
+int Loader::process_argv(const char **argv, pair<int, int> &param_count) const
 {
   vector<string> argv1, argv2;
   auto *args = &argv1;
@@ -36,7 +36,7 @@ int Loader::processCommandLineArgs(const char **argv, pair<int, int> &param_coun
 
 int Loader::init(const char **argv, pair<int, int> &param_count)
 {
-  auto param_index = processCommandLineArgs(argv, param_count);
+  auto param_index = process_argv(argv, param_count);
   if(param_index == -1)
   {    
     DLOG(ERROR, "Command line parameters are invalid\n");
