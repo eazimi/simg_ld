@@ -105,7 +105,7 @@ void Loader::run_rtld(const char* ldname, int param_index, int param_count)
   int rc = -1;
 
   // Load RTLD (ld.so)  
-  DynObjInfo ldso = safeLoadLib(ldname);
+  DynObjInfo ldso = load_lsdo(ldname);
   std::cout << ((getpid() == _parent_pid) ? "[PARENT], " : "[CHILD], ") << "lsdo.baseAddr: " 
             << std::hex << ldso.get_base_addr() << std::endl;
 
@@ -247,7 +247,7 @@ void *Loader::createNewStackForRtld(const DynObjInfo &info, int param_index, int
   return newStackEnd;
 }
 
-DynObjInfo Loader::safeLoadLib(const char *ld_name)
+DynObjInfo Loader::load_lsdo(const char *ld_name)
 {  
   Elf64_Addr cmd_entry = get_interpreter_entry(ld_name);
   DynObjInfo info;

@@ -15,7 +15,7 @@ public:
 private:
     void run_rtld(const char* ldname, int param_index, int param_count);
     Elf64_Addr get_interpreter_entry(const char *ld_name);
-    DynObjInfo safeLoadLib(const char *ld_name);
+    DynObjInfo load_lsdo(const char *ld_name);
     void* load_elf_interpreter(const char *elf_interpreter, DynObjInfo &info);
     unsigned long map_elf_interpreter_load_segment(int fd, Elf64_Ehdr *ehdr, Elf64_Phdr *phdr);
     void *createNewStackForRtld(const DynObjInfo &info, int param_index, int param_count);
