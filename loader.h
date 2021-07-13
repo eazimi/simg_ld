@@ -22,7 +22,7 @@ private:
     void* createNewHeapForRtld();
     void reserveMemRegion();
     void lockFreeMemRegions();
-    void unlockReservedMemRegion();
+    void release_reserved_memory_region();
     
     std::unique_ptr<MemoryArea_t> g_range = nullptr;
     int processCommandLineArgs(const char **argv, pair<int, int> &param_count) const;
