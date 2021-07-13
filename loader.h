@@ -19,7 +19,6 @@ private:
     void* load_elf_interpreter(const char *elf_interpreter, DynObjInfo &info);
     unsigned long map_elf_interpreter_load_segment(int fd, Elf64_Ehdr *ehdr, Elf64_Phdr *phdr);
     void *createNewStackForRtld(const DynObjInfo &info, int param_index, int param_count);
-    void getStackRegion(Area *stack);
     void* createNewHeapForRtld();
     void reserveMemRegion();
     void lockFreeMemRegions();

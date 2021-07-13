@@ -122,12 +122,28 @@ static void getProcStatField(enum Procstat_t type, char *out, size_t len)
     }
 }
 
+// Returns the [stack] area by reading the proc maps
+static void getStackRegion(Area *stack) // OUT
+{
+    Area area;
+    int mapsfd = open("/proc/self/maps", O_RDONLY);
+    while (readMapsLine(mapsfd, &area))
+    {
+        if (strstr(area.name, "[stack]") && area.endAddr >= (VA)&area)
+        {
+            *stack = area;
+            break;
+        }
+    }
+    close(mapsfd);
+}
+
 // Creates a deep copy of the stack region pointed to be `origStack` at the
 // location pointed to be `newStack`. Returns the start-of-stack pointer
 // in the new stack region.
 static void *deepCopyStack(void *newStack, const void *origStack, size_t len,
-                            const void *newStackEnd, const void *origStackEnd,
-                            const DynObjInfo &info, int param_index, int param_count)
+                           const void *newStackEnd, const void *origStackEnd,
+                           const DynObjInfo &info, int param_index, int param_count)
 {
     // Return early if any pointer is NULL
     if (!newStack || !origStack ||
@@ -255,9 +271,9 @@ static void *deepCopyStack(void *newStack, const void *origStack, size_t len,
 
 static void *mmapWrapper(void *addr, size_t length, int prot, int flags, int fd, off_t offset)
 {
-  length = ROUND_UP(length);
-  void *ret = mmap(addr, length, prot, flags, fd, offset);
-  return ret;
+    length = ROUND_UP(length);
+    void *ret = mmap(addr, length, prot, flags, fd, offset);
+    return ret;
 }
 
 #endif

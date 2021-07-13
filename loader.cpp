@@ -183,22 +183,6 @@ void *Loader::createNewHeapForRtld()
   return addr;
 }
 
-// Returns the [stack] area by reading the proc maps
-void Loader::getStackRegion(Area *stack) // OUT
-{
-  Area area;
-  int mapsfd = open("/proc/self/maps", O_RDONLY);
-  while (readMapsLine(mapsfd, &area))
-  {
-    if (strstr(area.name, "[stack]") && area.endAddr >= (VA)&area)
-    {
-      *stack = area;
-      break;
-    }
-  }
-  close(mapsfd);
-}
-
 // This function does three things:
 //  1. Creates a new stack region to be used for initialization of RTLD (ld.so)
 //  2. Deep copies the original stack (from the kernel) in the new stack region
