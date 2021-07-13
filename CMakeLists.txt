@@ -18,6 +18,7 @@ add_executable(simg_ld
     dyn_obj_info.hpp
     channel.hpp
     channel.cpp
+    loader_global.hpp
     )
 target_link_libraries(simg_ld -static)
 
