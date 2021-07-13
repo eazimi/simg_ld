@@ -80,7 +80,7 @@ void Loader::run(int param_index, const pair<int, int> &param_count)
     ptrace(PTRACE_TRACEME, 0, nullptr, nullptr); // Parent will get notified of everything
     raise(SIGSTOP); // Wait for the parent to awake me
 
-    runRtld(ldname, 0, param_count.first);
+    run_rtld(ldname, 0, param_count.first);
   }
   else // parent
   {
@@ -94,13 +94,13 @@ void Loader::run(int param_index, const pair<int, int> &param_count)
     ptrace(PTRACE_CONT, pid, 0, 0); // Let's awake the child now
 
     wait_ret = waitpid(pid, &status, 0);
-    runRtld(ldname, param_index, param_count.second);
+    run_rtld(ldname, param_index, param_count.second);
   }
 }
 
 // This function loads in ld.so, sets up a separate stack for it, and jumps
 // to the entry point of ld.so
-void Loader::runRtld(const char* ldname, int param_index, int param_count)
+void Loader::run_rtld(const char* ldname, int param_index, int param_count)
 {
   int rc = -1;
 

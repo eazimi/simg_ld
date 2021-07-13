@@ -13,7 +13,7 @@ public:
     void run(int param_index, const pair<int, int> &param_count);    
 
 private:
-    void runRtld(const char* ldname, int param_index, int param_count);
+    void run_rtld(const char* ldname, int param_index, int param_count);
     Elf64_Addr getInterpreterEntry(const char *ld_name);
     DynObjInfo safeLoadLib(const char *ld_name);
     void* load_elf_interpreter(const char *elf_interpreter, DynObjInfo &info);
