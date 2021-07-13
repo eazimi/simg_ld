@@ -49,7 +49,7 @@ int Loader::init(const char **argv, pair<int, int> &param_count)
 
   // reserve some 2 GB in the address space, lock remained free areas
   reserve_memeory_region();
-  lockFreeMemRegions();
+  hide_free_memoty_regions();
   release_reserved_memory_region();
 
   return param_index;
@@ -263,7 +263,7 @@ void Loader::release_reserved_memory_region()
   munmap(g_range->start, (unsigned long)g_range->end - (unsigned long)g_range->start);
 }
 
-void Loader::lockFreeMemRegions()
+void Loader::hide_free_memoty_regions()
 {
   std::vector<MemoryArea_t> mmaps_range {};
   Area area;
