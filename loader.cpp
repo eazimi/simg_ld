@@ -488,10 +488,3 @@ Elf64_Addr Loader::getInterpreterEntry(const char *ld_name)
   assert(rc == sizeof(elf_hdr));
   return elf_hdr.e_entry;
 }
-
-void *Loader::mmapWrapper(void *addr, size_t length, int prot, int flags, int fd, off_t offset)
-{
-  length = ROUND_UP(length);
-  void *ret = mmap(addr, length, prot, flags, fd, offset);
-  return ret;
-}
