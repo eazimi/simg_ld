@@ -21,6 +21,7 @@ add_executable(simg_ld
     channel.hpp
     channel.cpp
     global.hpp
+    loader_global_funcs.hpp
     )
 target_link_libraries(simg_ld -static)
 

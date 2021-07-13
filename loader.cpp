@@ -19,6 +19,7 @@
 #include <sstream>
 #include "switch_context.h"
 #include "limits.h"
+#include "loader_global_funcs.hpp"
 
 // returns the parent's parameters start index in the command line parameters
 int Loader::processCommandLineArgs(const char **argv, pair<int, int> &param_count) const
@@ -424,35 +425,6 @@ void *Loader::createNewStackForRtld(const DynObjInfo &info, int param_index, int
   return newStackEnd;
 }
 
-void *Loader::GET_ARGC_ADDR(const void *stackEnd)
-{
-  return (void *)((uintptr_t)(stackEnd) + sizeof(uintptr_t));
-}
-
-// Returns pointer to argv[0], given a pointer to end of stack
-void *Loader::GET_ARGV_ADDR(const void *stackEnd)
-{
-  return (void *)((unsigned long)(stackEnd) + 2 * sizeof(uintptr_t));
-}
-
-// Returns pointer to env[0], given a pointer to end of stack
-void *Loader::GET_ENV_ADDR(char **argv, int argc)
-{
-  return (void *)&argv[argc + 1];
-}
-
-// Returns a pointer to aux vector, given a pointer to the environ vector
-// on the stack
-ElfW(auxv_t) * Loader::GET_AUXV_ADDR(const char **env)
-{
-  ElfW(auxv_t) * auxvec;
-  const char **evp = env;
-  while (*evp++ != nullptr)
-    ;
-  auxvec = (ElfW(auxv_t) *)evp;
-  return auxvec;
-}
-
 // Creates a deep copy of the stack region pointed to be `origStack` at the
 // location pointed to be `newStack`. Returns the start-of-stack pointer
 // in the new stack region.
@@ -606,33 +578,6 @@ void *Loader::deepCopyStack(void *newStack, const void *origStack, size_t len,
 
   // Return the start of new stack.
   return (void *)newArgcAddr;
-}
-
-// Given a pointer to aux vector, parses the aux vector, and patches the
-// following three entries: AT_PHDR, AT_ENTRY, and AT_PHNUM
-void Loader::patchAuxv(ElfW(auxv_t) * av, unsigned long phnum,
-                       unsigned long phdr, unsigned long entry)
-{
-  for (; av->a_type != AT_NULL; ++av)
-  {
-    switch (av->a_type)
-    {
-    case AT_PHNUM:
-      av->a_un.a_val = phnum;
-      break;
-    case AT_PHDR:
-      av->a_un.a_val = phdr;
-      break;
-    case AT_ENTRY:
-      av->a_un.a_val = entry;
-      break;
-    case AT_RANDOM:
-      // DLOG(NOISE, "AT_RANDOM value: 0%lx\n", av->a_un.a_val);
-      break;
-    default:
-      break;
-    }
-  }
 }
 
 DynObjInfo Loader::safeLoadLib(const char *ld_name)
