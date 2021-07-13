@@ -4,6 +4,30 @@
 #include <cstdint>
 #include <link.h>
 #include <fcntl.h>
+#include <elf.h>
+#include <stdio.h>
+#include <vector>
+#include <memory>
+#include <assert.h>
+#include <sys/stat.h>
+#include <sys/mman.h>
+#include <unistd.h>
+#include <iostream>
+#include <string.h>
+#include <stdlib.h>
+#include <errno.h>
+#include <asm/prctl.h>
+#include <syscall.h>
+#include <fstream>
+#include <sys/ptrace.h>
+#include <sys/wait.h>
+#include <sys/socket.h>
+#include <csignal>
+#include <sstream>
+#include "switch_context.h"
+#include "limits.h"
+#include "channel.hpp"
+#include "global.hpp"
 #include "dyn_obj_info.hpp"
 
 static void *get_argc_addr(const void *stackEnd)

@@ -1,24 +1,4 @@
 #include "loader.h"
-#include <assert.h>
-#include <sys/stat.h>
-#include <sys/mman.h>
-#include <fcntl.h>
-#include <unistd.h>
-#include <iostream>
-#include <string.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <errno.h>
-#include <asm/prctl.h>
-#include <syscall.h>
-#include <fstream>
-#include <sys/ptrace.h>
-#include <sys/wait.h>
-#include <sys/socket.h>
-#include <csignal>
-#include <sstream>
-#include "switch_context.h"
-#include "limits.h"
 
 // returns the parent's parameters start index in the command line parameters
 int Loader::processCommandLineArgs(const char **argv, pair<int, int> &param_count) const

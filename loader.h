@@ -1,14 +1,6 @@
 #ifndef LOADER_H
 #define LOADER_H
 
-#include <elf.h>
-#include <stdio.h>
-#include <link.h>
-#include <vector>
-#include <memory>
-#include <stdio.h>
-#include "global.hpp"
-#include "channel.hpp"
 #include "loader_global_funcs.hpp"
 
 using namespace std;
