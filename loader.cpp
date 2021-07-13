@@ -220,43 +220,6 @@ void Loader::getStackRegion(Area *stack) // OUT
   close(mapsfd);
 }
 
-// Returns the /proc/self/stat entry in the out string (of length len)
-void Loader::getProcStatField(enum Procstat_t type, char *out, size_t len)
-{
-  const char *procPath = "/proc/self/stat";
-  char sbuf[1024] = {0};
-
-  int fd = open(procPath, O_RDONLY);
-  if (fd < 0)
-  {
-    DLOG(ERROR, "Failed to open %s. Error: %s\n", procPath, strerror(errno));
-    return;
-  }
-
-  int num_read = read(fd, sbuf, sizeof sbuf - 1);
-  close(fd);
-  if (num_read <= 0)
-    return;
-  sbuf[num_read] = '\0';
-
-  char* field_str = strtok(sbuf, " ");
-  int field_counter = 0;
-  while (field_str && field_counter != type)
-  {
-    field_str = strtok(nullptr, " ");
-    field_counter++;
-  }
-
-  if (field_str)
-  {
-    strncpy(out, field_str, len);
-  }
-  else
-  {
-    DLOG(ERROR, "Failed to parse %s.\n", procPath);
-  }
-}
-
 // This function does three things:
 //  1. Creates a new stack region to be used for initialization of RTLD (ld.so)
 //  2. Deep copies the original stack (from the kernel) in the new stack region
@@ -577,6 +540,7 @@ void *Loader::load_elf_interpreter(const char *elf_interpreter, DynObjInfo &info
   rc = read(ld_so_fd, e_ident, sizeof(e_ident));
   assert(rc == sizeof(e_ident));
   assert(strncmp(e_ident, ELFMAG, sizeof(ELFMAG) - 1) == 0);
+  
   // FIXME:  Add support for 32-bit ELF later
   assert(e_ident[EI_CLASS] == ELFCLASS64);
 
