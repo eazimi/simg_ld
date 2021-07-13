@@ -8,20 +8,6 @@
 
 using namespace std;
 
-void AppLoader::printMMappedRanges()
-{
-  std::string maps_path = "/proc/self/maps";
-  std::filebuf fb;
-  std::string line;
-  if (fb.open(maps_path, std::ios_base::in))
-  {
-    std::istream is(&fb);
-    while (std::getline(is, line))
-      std::cout << line << std::endl;
-    fb.close();
-  }
-}
-
 void AppLoader::memUnmapRanges()
 {
   const string maps_path = "/proc/self/maps";

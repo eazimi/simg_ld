@@ -84,7 +84,7 @@ void Loader::run(int param_index, const pair<int, int> &param_count)
   ss << "[PARENT], before fork: getpid() = " << std::dec << getpid();
   pause_run(ss.str());
 
-    // Create an AF_LOCAL socketpair used for exchanging messages
+  // Create an AF_LOCAL socketpair used for exchanging messages
   // between the model-checker process (ourselves) and the model-checked
   // process:
   int sockets[2];
@@ -156,7 +156,7 @@ void Loader::runRtld(const char* ldname, int param_index, int param_count)
   ss << ((getpid() == _parent_pid) ? "[PARENT], " : "[CHILD], ") 
      << "before jumping to sp: " << std::dec << getpid();  
   pause_run(ss.str());
-  printMappedAreas();
+  print_mmapped_ranges(getpid());
 
   // Pointer to the ld.so entry point
   void *ldso_entrypoint = ldso.get_entry_point();
@@ -667,21 +667,6 @@ void Loader::reserveMemRegion()
   if (region == MAP_FAILED)
   {
     DLOG(ERROR, "Failed to mmap region: %s\n", strerror(errno));
-  }
-}
-
-void Loader::printMappedAreas()
-{
-  std::cout << ((getpid() == _parent_pid) ? "[PARENT], " : "[CHILD], ") << "printing mmaped regions ..." << std::endl;
-  std::string maps_path = "/proc/self/maps";
-  std::filebuf fb;
-  std::string line;
-  if(fb.open(maps_path, std::ios_base::in))
-  {
-    std::istream is(&fb);
-    while (std::getline(is, line))
-      std::cout << line << std::endl; 
-    fb.close();
   }
 }
 

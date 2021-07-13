@@ -292,4 +292,20 @@ static vector<pair<unsigned long, unsigned long>> getRanges(string maps_path, ve
     return result;
 }
 
+static void print_mmapped_ranges(pid_t pid = -1)
+{
+    if(pid != -1)
+        std::cout << ((pid == _parent_pid) ? "[PARENT], " : "[CHILD], ") << "printing mmaped regions ..." << std::endl;
+    std::string maps_path = "/proc/self/maps";
+    std::filebuf fb;
+    std::string line;
+    if (fb.open(maps_path, std::ios_base::in))
+    {
+        std::istream is(&fb);
+        while (std::getline(is, line))
+            std::cout << line << std::endl;
+        fb.close();
+    }
+}
+
 #endif
