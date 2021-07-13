@@ -124,7 +124,7 @@ void Loader::run_rtld(const char* ldname, int param_index, int param_count)
   }
 
   // Create new heap region to be used by RTLD
-  void *newHeap = createNewHeapForRtld();
+  void *newHeap = create_new_heap_for_ldso();
   if (!newHeap)
   {
     DLOG(ERROR, "Error creating new heap for RTLD. Exiting...\n");
@@ -159,7 +159,7 @@ void Loader::run_rtld(const char* ldname, int param_index, int param_count)
 //
 // Returns the start address of the new heap on success, or NULL on
 // failure.
-void *Loader::createNewHeapForRtld()
+void *Loader::create_new_heap_for_ldso()
 {
   const uint64_t heapSize = 100 * PAGE_SIZE;
 
