@@ -16,6 +16,8 @@ add_executable(simg_ld
     switch_context.h
     switch_context.cpp    
     dyn_obj_info.hpp
+    channel.hpp
+    channel.cpp
     )
 target_link_libraries(simg_ld -static)
 

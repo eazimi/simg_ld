@@ -7,6 +7,7 @@
 #include <vector>
 #include <memory>
 #include "dyn_obj_info.hpp"
+#include "channel.hpp"
 
 // Based on the entries in /proc/<pid>/stat as described in `man 5 proc`
 enum Procstat_t
@@ -126,6 +127,8 @@ private:
     
     std::unique_ptr<MemRange_t> g_range = nullptr;
     int processCommandLineArgs(const char **argv, pair<int, int> &param_count) const;
+
+    std::unique_ptr<Channel> channel ;
 };
 
 #endif
