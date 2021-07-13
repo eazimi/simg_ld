@@ -203,63 +203,6 @@ void *Loader::createNewHeapForRtld()
   return addr;
 }
 
-/* Read non-null character, return null if EOF */
-char Loader::readChar(int fd)
-{
-  char c;
-  int rc;
-
-  do
-  {
-    rc = read(fd, &c, 1);
-  } while (rc == -1 && errno == EINTR);
-  if (rc <= 0)
-    return 0;
-  return c;
-}
-
-/* Read decimal number, return value and terminating character */
-char Loader::readDec(int fd, VA *value)
-{
-  char c;
-  unsigned long int v = 0;
-
-  while (1)
-  {
-    c = readChar(fd);
-    if ((c >= '0') && (c <= '9'))
-      c -= '0';
-    else
-      break;
-    v = v * 10 + c;
-  }
-  *value = (VA)v;
-  return c;
-}
-
-/* Read decimal number, return value and terminating character */
-char Loader::readHex(int fd, VA *virt_mem_addr)
-{
-  char c;
-  unsigned long int v = 0;
-
-  while (1)
-  {
-    c = readChar(fd);
-    if ((c >= '0') && (c <= '9'))
-      c -= '0';
-    else if ((c >= 'a') && (c <= 'f'))
-      c -= 'a' - 10;
-    else if ((c >= 'A') && (c <= 'F'))
-      c -= 'A' - 10;
-    else
-      break;
-    v = v * 16 + c;
-  }
-  *virt_mem_addr = (VA)v;
-  return c;
-}
-
 int Loader::readMapsLine(int mapsfd, Area *area)
 {
   char c, rflag, sflag, wflag, xflag;

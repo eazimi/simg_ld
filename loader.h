@@ -30,9 +30,6 @@ private:
     void *createNewStackForRtld(const DynObjInfo &info, int param_index, int param_count);
     void getStackRegion(Area *stack);
     int readMapsLine(int mapsfd, Area *area);
-    char readChar(int fd);
-    char readDec(int fd, VA *value);
-    char readHex(int fd, VA *virt_mem_addr);
     void getProcStatField(enum Procstat_t type, char *out, size_t len);
     void* deepCopyStack(void *newStack, const void *origStack, size_t len,
               const void *newStackEnd, const void *origStackEnd, const DynObjInfo &info, int param_index, int param_count);
