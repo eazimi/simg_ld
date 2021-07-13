@@ -24,7 +24,6 @@
 #include <sys/socket.h>
 #include <csignal>
 #include <sstream>
-#include "switch_context.h"
 #include "limits.h"
 #include "channel.hpp"
 #include "global.hpp"

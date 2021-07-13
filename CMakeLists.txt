@@ -15,8 +15,6 @@ add_executable(simg_ld
     simg_ld_main.cpp
     loader.cpp
     loader.h
-    switch_context.h
-    switch_context.cpp    
     dyn_obj_info.hpp
     channel.hpp
     channel.cpp
