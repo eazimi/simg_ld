@@ -20,7 +20,7 @@ add_executable(simg_ld
     dyn_obj_info.hpp
     channel.hpp
     channel.cpp
-    include/loader_global.hpp
+    global.hpp
     )
 target_link_libraries(simg_ld -static)
 
@@ -28,4 +28,4 @@ add_executable(app_loader
     app_loader_main.cpp
     app_loader.h
     app_loader.cpp
-    include/app_loader_global.hpp)
+    global.hpp)

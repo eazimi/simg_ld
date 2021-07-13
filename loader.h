@@ -8,7 +8,7 @@
 #include <memory>
 #include <stdio.h>
 #include "dyn_obj_info.hpp"
-#include "loader_global.hpp"
+#include "global.hpp"
 #include "channel.hpp"
 
 using namespace std;
@@ -16,7 +16,7 @@ using namespace std;
 class Loader
 {
 public:
-    explicit Loader() { g_range = std::make_unique<MemRange_t>(); }
+    explicit Loader() { g_range = std::make_unique<MemoryArea_t>(); }
     int init(const char **argv, pair<int, int> &param_count);
     void run(int param_index, const pair<int, int> &param_count);    
 
@@ -47,7 +47,7 @@ private:
     void unlockReservedMemRegion();
     void printMappedAreas();
     
-    std::unique_ptr<MemRange_t> g_range = nullptr;
+    std::unique_ptr<MemoryArea_t> g_range = nullptr;
     int processCommandLineArgs(const char **argv, pair<int, int> &param_count) const;
 
     std::unique_ptr<Channel> channel ;

@@ -1,5 +1,5 @@
-#ifndef APP_LOADER_GLOBAL_HPP
-#define APP_LOADER_GLOBAL_HPP
+#ifndef GLOBAL_HPP
+#define GLOBAL_HPP
 
 #include <link.h>
 #include <errno.h>
@@ -10,6 +10,7 @@
 #include <fstream>
 #include <cstring>
 #include <vector>
+#include <iostream>
 
 using namespace std;
 
@@ -17,8 +18,15 @@ using namespace std;
 ////    DEFINE - MACRO   //////////////////////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
+#define LD_NAME "/lib64/ld-linux-x86-64.so.2"
+
 #define FILENAMESIZE 1024
+#define MAX_ELF_INTERP_SZ 256
+
+#define PAGE_SIZE 0x1000LL
+
 #define _1_GB    0x40000000
+#define _1500_MB 0x60000000
 #define _3_GB    0xc0000000
 
 // Logging levels
@@ -44,11 +52,48 @@ static const char *colors[] = {KNRM, KRED, KBLU, KGRN, KYEL};
                 __LINE__ __VA_OPT__(, ) __VA_ARGS__);                         \
     } while (0)
 
+// FIXME: 0x1000 is one page; Use sysconf(PAGESIZE) instead.
+#define ROUND_DOWN(x) ((unsigned long long)(x) & ~(unsigned long long)(PAGE_SIZE - 1))
+#define ROUND_UP(x) (((unsigned long long)(x) + PAGE_SIZE - 1) & \
+                     ~(PAGE_SIZE - 1))
+#define PAGE_OFFSET(x) ((x) & (PAGE_SIZE - 1))
+
+#define ALIGN (PAGE_SIZE - 1)
+#define ROUND_PG(x) (((x) + (ALIGN)) & ~(ALIGN))
+#define TRUNC_PG(x) ((x) & ~(ALIGN))
+#define PFLAGS(x) ((((x)&PF_R) ? PROT_READ : 0) |  \
+				   (((x)&PF_W) ? PROT_WRITE : 0) | \
+				   (((x)&PF_X) ? PROT_EXEC : 0))
+#define LOAD_ERR ((unsigned long)-1)
+
+// TODO: This is very x86-64 specific; support other architectures??
+#define eax rax
+#define ebx rbx
+#define ecx rcx
+#define edx rax
+#define ebp rbp
+#define esi rsi
+#define edi rdi
+#define esp rsp
+#define CLEAN_FOR_64_BIT_HELPER(args...) #args
+#define CLEAN_FOR_64_BIT(args...) CLEAN_FOR_64_BIT_HELPER(args)
+
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ////    DATA STRUCTURE   //////////////////////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 typedef char *VA; /* VA = virtual address */
+
+// Based on the entries in /proc/<pid>/stat as described in `man 5 proc`
+enum Procstat_t
+{
+    PID = 1,
+    COMM,  // 2
+    STATE, // 3
+    PPID,  // 4
+    NUM_THREADS = 19,
+    STARTSTACK = 27
+};
 
 typedef union ProcMapsArea
 {
@@ -109,15 +154,25 @@ typedef union ProcMapsArea
 
 typedef ProcMapsArea Area;
 
-typedef struct _MemoryArea
+typedef struct
 {
   void *start;
   void *end;
 } MemoryArea_t;
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-////    FUNCTIONS   ///////////////////////////////////////////////////////////////////////////////////////////////////
+////    FUNCTIONS - VARIABLES   ///////////////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+static pid_t _parent_pid;
+
+static void pause_run(std::string message)
+{
+  std::cout << message << std::endl;
+  std::cout << "press a key to continue ..." << std::endl;
+  std::string str; 
+  std::cin >> str;
+}
 
 /* Read non-null character, return null if EOF */
 static char readChar(int fd)

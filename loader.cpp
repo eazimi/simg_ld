@@ -710,11 +710,11 @@ void Loader::unlockReservedMemRegion()
 
 void Loader::lockFreeMemRegions()
 {
-  std::vector<MemRange_t> mmaps_range {};
+  std::vector<MemoryArea_t> mmaps_range {};
   Area area;
   int mapsfd = open("/proc/self/maps", O_RDONLY);
   bool firstLine = true;
-  MemRange_t range;
+  MemoryArea_t range;
   while (readMapsLine(mapsfd, &area))
   { 
     // todo: check if required to add this condition: (area.endAddr >= (VA)&area)       

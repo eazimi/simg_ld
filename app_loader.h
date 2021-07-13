@@ -1,7 +1,7 @@
 #ifndef APP_LOADER_H
 #define APP_LOADER_H
 
-#include "app_loader_global.hpp"
+#include "global.hpp"
 #include <memory>
 
 class AppLoader
