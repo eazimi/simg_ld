@@ -6,16 +6,16 @@ int Loader::process_argv(const char **argv, pair<int, int> &param_count) const
   vector<string> argv1, argv2;
   auto *args = &argv1;
   bool separatorFound = false;
-  auto i {0};
-  auto index {0};
+  auto i{0};
+  auto index{0};
   argv++;
   i++;
-  while(*argv != nullptr)
+  while (*argv != nullptr)
   {
-    if(strcmp(*argv, (char*)"--") == 0)
+    if (strcmp(*argv, (char *)"--") == 0)
     {
       separatorFound = (!separatorFound) ? true : false;
-      if(!separatorFound)
+      if (!separatorFound)
         return -1;
       index = i;
       args = &argv2;
@@ -27,9 +27,9 @@ int Loader::process_argv(const char **argv, pair<int, int> &param_count) const
   }
 
   // todo: check for more condition, like app's parameter count
-  if(!separatorFound || argv1.empty() || argv2.empty())
+  if (!separatorFound || argv1.empty() || argv2.empty())
     return -1;
-  param_count.first = argv1.size(); // child process
+  param_count.first = argv1.size();  // child process
   param_count.second = argv2.size(); // parent process
   return ++index;
 }
@@ -37,8 +37,8 @@ int Loader::process_argv(const char **argv, pair<int, int> &param_count) const
 int Loader::init(const char **argv, pair<int, int> &param_count)
 {
   auto param_index = process_argv(argv, param_count);
-  if(param_index == -1)
-  {    
+  if (param_index == -1)
+  {
     DLOG(ERROR, "Command line parameters are invalid\n");
     DLOG(ERROR, "Usage: ./simg_ld /PATH/TO/APP1 [APP1_PARAMS] -- /PATH/TO/APP2 [APP2_PARAMS]\n");
     DLOG(ERROR, "exiting ...\n");
@@ -55,13 +55,16 @@ int Loader::init(const char **argv, pair<int, int> &param_count)
   return param_index;
 }
 
-void Loader::run(int param_index, const pair<int, int> &param_count)
+void Loader::run(const char **argv)
 {
-  char *ldname = (char *)LD_NAME;
+  std::pair<int, int> param_count;
+  auto param_index = init((const char **)argv, param_count);
 
   std::stringstream ss;
   ss << "[PARENT], before fork: getpid() = " << std::dec << getpid();
   pause_run(ss.str());
+
+  char *ldname = (char *)LD_NAME;
 
   // Create an AF_LOCAL socketpair used for exchanging messages
   // between the model-checker process (ourselves) and the model-checked
@@ -71,15 +74,15 @@ void Loader::run(int param_index, const pair<int, int> &param_count)
 
   pid_t pid = fork();
   assert(pid >= 0 && "Could not fork child process");
-
+  
   if (pid == 0) // child
   {
     ::close(sockets[1]);
     channel = make_unique<Channel>(sockets[0]);
-    
-    ptrace(PTRACE_TRACEME, 0, nullptr, nullptr); // Parent will get notified of everything
-    raise(SIGSTOP); // Wait for the parent to awake me
 
+    ptrace(PTRACE_TRACEME, 0, nullptr, nullptr); // Parent will get notified of everything
+    raise(SIGSTOP);                              // Wait for the parent to awake me
+        
     run_rtld(ldname, 0, param_count.first);
   }
   else // parent
@@ -89,9 +92,9 @@ void Loader::run(int param_index, const pair<int, int> &param_count)
 
     int status;
     auto wait_ret = waitpid(pid, &status, 0);
-    
+
     ptrace(PTRACE_SETOPTIONS, pid, nullptr, PTRACE_O_TRACEEXIT); // I also want to know about the child's exit()
-    ptrace(PTRACE_CONT, pid, 0, 0); // Let's awake the child now
+    ptrace(PTRACE_CONT, pid, 0, 0);                              // Let's awake the child now
 
     wait_ret = waitpid(pid, &status, 0);
     run_rtld(ldname, param_index, param_count.second);
@@ -100,13 +103,13 @@ void Loader::run(int param_index, const pair<int, int> &param_count)
 
 // This function loads in ld.so, sets up a separate stack for it, and jumps
 // to the entry point of ld.so
-void Loader::run_rtld(const char* ldname, int param_index, int param_count)
+void Loader::run_rtld(const char *ldname, int param_index, int param_count)
 {
   int rc = -1;
 
-  // Load RTLD (ld.so)  
+  // Load RTLD (ld.so)
   DynObjInfo ldso = load_lsdo(ldname);
-  std::cout << ((getpid() == _parent_pid) ? "[PARENT], " : "[CHILD], ") << "lsdo.baseAddr: " 
+  std::cout << ((getpid() == _parent_pid) ? "[PARENT], " : "[CHILD], ") << "lsdo.baseAddr: "
             << std::hex << ldso.get_base_addr() << std::endl;
 
   if (ldso.get_base_addr() == NULL || ldso.get_entry_point() == NULL)
@@ -132,8 +135,8 @@ void Loader::run_rtld(const char* ldname, int param_index, int param_count)
   }
 
   std::stringstream ss;
-  ss << ((getpid() == _parent_pid) ? "[PARENT], " : "[CHILD], ") 
-     << "before jumping to sp: " << std::dec << getpid();  
+  ss << ((getpid() == _parent_pid) ? "[PARENT], " : "[CHILD], ")
+     << "before jumping to sp: " << std::dec << getpid();
   pause_run(ss.str());
   print_mmapped_ranges(getpid());
 
@@ -148,7 +151,7 @@ void Loader::run_rtld(const char* ldname, int param_index, int param_count)
   asm volatile("jmp *%0"
                :
                : "g"(ldso_entrypoint)
-               : "memory");
+               : "memory");               
 
   DLOG(ERROR, "Error: RTLD returned instead of passing the control to the created stack. Panic...\n");
   exit(-1);
@@ -166,7 +169,7 @@ void *Loader::create_new_heap_for_ldso()
   // We go through the mmap wrapper function to ensure that this gets added
   // to the list of upper half regions to be checkpointed.
 
-  void *startAddr = (void*)((unsigned long)g_range->start + _1500_MB);
+  void *startAddr = (void *)((unsigned long)g_range->start + _1500_MB);
 
   void *addr = mmapWrapper(startAddr /*0*/, heapSize, PROT_READ | PROT_WRITE,
                            MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
@@ -197,7 +200,7 @@ void *Loader::create_new_stack_for_ldso(const DynObjInfo &info, int param_index,
   // We go through the mmap wrapper function to ensure that this gets added
   // to the list of upper half regions to be checkpointed.
 
-  void *startAddr = (void*)((unsigned long)g_range->start + _1_GB);
+  void *startAddr = (void *)((unsigned long)g_range->start + _1_GB);
 
   void *newStack = mmapWrapper(startAddr, stack.size, PROT_READ | PROT_WRITE,
                                MAP_GROWSDOWN | MAP_PRIVATE | MAP_ANONYMOUS,
@@ -248,7 +251,7 @@ void *Loader::create_new_stack_for_ldso(const DynObjInfo &info, int param_index,
 }
 
 DynObjInfo Loader::load_lsdo(const char *ld_name)
-{  
+{
   Elf64_Addr cmd_entry = get_interpreter_entry(ld_name);
   DynObjInfo info;
   auto baseAddr = load_elf_interpreter(ld_name, info);
@@ -265,15 +268,15 @@ void Loader::release_reserved_memory_region()
 
 void Loader::hide_free_memoty_regions()
 {
-  std::vector<MemoryArea_t> mmaps_range {};
+  std::vector<MemoryArea_t> mmaps_range{};
   Area area;
   int mapsfd = open("/proc/self/maps", O_RDONLY);
   bool firstLine = true;
   MemoryArea_t range;
   while (readMapsLine(mapsfd, &area))
-  { 
-    // todo: check if required to add this condition: (area.endAddr >= (VA)&area)       
-    if(firstLine)
+  {
+    // todo: check if required to add this condition: (area.endAddr >= (VA)&area)
+    if (firstLine)
     {
       range.start = area.endAddr;
       firstLine = false;
@@ -281,19 +284,19 @@ void Loader::hide_free_memoty_regions()
     }
     range.end = area.addr;
     mmaps_range.push_back(std::move(range));
-    range.start = area.endAddr;    
+    range.start = area.endAddr;
   }
   close(mapsfd);
   mmaps_range.pop_back();
 
-  auto mmaps_size = mmaps_range.size()-1;
+  auto mmaps_size = mmaps_range.size() - 1;
   for (auto i = 0; i <= mmaps_size; i++)
   {
     auto start_mmap = (unsigned long)(mmaps_range[i].start);
     auto length = (unsigned long)(mmaps_range[i].end) - start_mmap;
-    if(length == 0)
+    if (length == 0)
       continue;
-    void *mmap_ret = mmap((void *)start_mmap, length, PROT_NONE, MAP_PRIVATE | MAP_ANONYMOUS | MAP_FIXED, -1, 0);    
+    void *mmap_ret = mmap((void *)start_mmap, length, PROT_NONE, MAP_PRIVATE | MAP_ANONYMOUS | MAP_FIXED, -1, 0);
     if (mmap_ret == MAP_FAILED)
     {
       DLOG(ERROR, "failed to lock the free spot. %s\n", strerror(errno));
@@ -328,7 +331,7 @@ void Loader::reserve_memeory_region()
     g_range->end = (VA)area.addr - _1_GB;
   }
   // std::cout << "setReservedMemRange(): start = " << std::hex << g_range->start << " , end = " << g_range->end << std::endl;
-  
+
   void *region = mmapWrapper(g_range->start, (unsigned long)g_range->end - (unsigned long)g_range->start, PROT_READ | PROT_WRITE,
                              MAP_GROWSDOWN | MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
   if (region == MAP_FAILED)
@@ -348,7 +351,7 @@ void *Loader::load_elf_interpreter(const char *elf_interpreter, DynObjInfo &info
   rc = read(ld_so_fd, e_ident, sizeof(e_ident));
   assert(rc == sizeof(e_ident));
   assert(strncmp(e_ident, ELFMAG, sizeof(ELFMAG) - 1) == 0);
-  
+
   // FIXME:  Add support for 32-bit ELF later
   assert(e_ident[EI_CLASS] == ELFCLASS64);
 
@@ -365,7 +368,7 @@ void *Loader::load_elf_interpreter(const char *elf_interpreter, DynObjInfo &info
   Elf64_Phdr *phdr;
   Elf64_Ehdr *ehdr = &elf_hdr;
   ssize_t sz = ehdr->e_phnum * sizeof(Elf64_Phdr);
-  phdr = (Elf64_Phdr*) alloca(sz);
+  phdr = (Elf64_Phdr *)alloca(sz);
 
   if (read(ld_so_fd, phdr, sz) != sz)
     DLOG(ERROR, "can't read program header");
@@ -374,63 +377,63 @@ void *Loader::load_elf_interpreter(const char *elf_interpreter, DynObjInfo &info
 
   info.set_phnum(elf_hdr.e_phnum);
   info.set_phdr((VA)baseAddr + elf_hdr.e_phoff);
-  return (void*)baseAddr;
+  return (void *)baseAddr;
 }
 
 unsigned long Loader::map_elf_interpreter_load_segment(int fd, Elf64_Ehdr *ehdr, Elf64_Phdr *phdr)
 {
-	unsigned long minva, maxva;
-	Elf64_Phdr *iter;
-	ssize_t sz;
-	int flags, dyn = ehdr->e_type == ET_DYN;
-	unsigned char *p, *base;
+  unsigned long minva, maxva;
+  Elf64_Phdr *iter;
+  ssize_t sz;
+  int flags, dyn = ehdr->e_type == ET_DYN;
+  unsigned char *p, *base;
 
-	minva = (unsigned long)-1;
-	maxva = 0;
+  minva = (unsigned long)-1;
+  maxva = 0;
 
-	for (iter = phdr; iter < &phdr[ehdr->e_phnum]; iter++)
-	{
-		if (iter->p_type != PT_LOAD)
-			continue;
-		if (iter->p_vaddr < minva)
-			minva = iter->p_vaddr;
-		if (iter->p_vaddr + iter->p_memsz > maxva)
-			maxva = iter->p_vaddr + iter->p_memsz;
-	}
+  for (iter = phdr; iter < &phdr[ehdr->e_phnum]; iter++)
+  {
+    if (iter->p_type != PT_LOAD)
+      continue;
+    if (iter->p_vaddr < minva)
+      minva = iter->p_vaddr;
+    if (iter->p_vaddr + iter->p_memsz > maxva)
+      maxva = iter->p_vaddr + iter->p_memsz;
+  }
 
-	minva = TRUNC_PG(minva);
-	maxva = ROUND_PG(maxva);
+  minva = TRUNC_PG(minva);
+  maxva = ROUND_PG(maxva);
 
-	/* For dynamic ELF let the kernel chose the address. */
-	// hint = dyn ? NULL : (unsigned char *)minva;
-	flags = dyn ? 0 : MAP_FIXED;
-	flags |= (MAP_PRIVATE | MAP_ANONYMOUS);
+  /* For dynamic ELF let the kernel chose the address. */
+  // hint = dyn ? NULL : (unsigned char *)minva;
+  flags = dyn ? 0 : MAP_FIXED;
+  flags |= (MAP_PRIVATE | MAP_ANONYMOUS);
 
-	/* Check that we can hold the whole image. */
-	// base = (unsigned char*) mmap(hint, maxva - minva, PROT_NONE, flags, -1, 0);
-	base = (unsigned char*) mmap(g_range->start, maxva - minva, PROT_NONE, flags, -1, 0);
-	if (base == (void *)-1)
-		return -1;
-	munmap(base, maxva - minva);
+  /* Check that we can hold the whole image. */
+  // base = (unsigned char*) mmap(hint, maxva - minva, PROT_NONE, flags, -1, 0);
+  base = (unsigned char *)mmap(g_range->start, maxva - minva, PROT_NONE, flags, -1, 0);
+  if (base == (void *)-1)
+    return -1;
+  munmap(base, maxva - minva);
 
   // base = (unsigned char*) g_range->start;
 
-	flags = MAP_FIXED | MAP_ANONYMOUS | MAP_PRIVATE;
-	// flags = MAP_FIXED | MAP_PRIVATE;
-	/* Now map each segment separately in precalculated address. */
-	for (iter = phdr; iter < &phdr[ehdr->e_phnum]; iter++)
-	{
-		unsigned long off, start;
-		if (iter->p_type != PT_LOAD)
-			continue;
-		off = iter->p_vaddr & ALIGN;
-		start = dyn ? (unsigned long)base : 0;
-		// start = (unsigned long)g_range->start;
-		start += TRUNC_PG(iter->p_vaddr);
-		sz = ROUND_PG(iter->p_memsz + off);
+  flags = MAP_FIXED | MAP_ANONYMOUS | MAP_PRIVATE;
+  // flags = MAP_FIXED | MAP_PRIVATE;
+  /* Now map each segment separately in precalculated address. */
+  for (iter = phdr; iter < &phdr[ehdr->e_phnum]; iter++)
+  {
+    unsigned long off, start;
+    if (iter->p_type != PT_LOAD)
+      continue;
+    off = iter->p_vaddr & ALIGN;
+    start = dyn ? (unsigned long)base : 0;
+    // start = (unsigned long)g_range->start;
+    start += TRUNC_PG(iter->p_vaddr);
+    sz = ROUND_PG(iter->p_memsz + off);
 
-		p = (unsigned char*) mmap((void *)start, sz, PROT_WRITE, flags, -1, 0);
-		if (p == (void *)-1)
+    p = (unsigned char *)mmap((void *)start, sz, PROT_WRITE, flags, -1, 0);
+    if (p == (void *)-1)
     {
       munmap(base, maxva - minva);
       return LOAD_ERR;
@@ -440,16 +443,16 @@ unsigned long Loader::map_elf_interpreter_load_segment(int fd, Elf64_Ehdr *ehdr,
       munmap(base, maxva - minva);
       return LOAD_ERR;
     }
-		if (read(fd, p + off, iter->p_filesz) !=
-			(ssize_t)iter->p_filesz)
+    if (read(fd, p + off, iter->p_filesz) !=
+        (ssize_t)iter->p_filesz)
     {
       munmap(base, maxva - minva);
       return LOAD_ERR;
     }
-		mprotect(p, sz, PFLAGS(iter->p_flags));
-	}
+    mprotect(p, sz, PFLAGS(iter->p_flags));
+  }
 
-	return (unsigned long)base;
+  return (unsigned long)base;
 }
 
 Elf64_Addr Loader::get_interpreter_entry(const char *ld_name)

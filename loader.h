@@ -8,11 +8,11 @@ using namespace std;
 class Loader
 {
 public:
-    explicit Loader() { g_range = std::make_unique<MemoryArea_t>(); }
-    int init(const char **argv, pair<int, int> &param_count);
-    void run(int param_index, const pair<int, int> &param_count);
+    explicit Loader() { g_range = std::make_unique<MemoryArea_t>(); }    
+    void run(const char **argv);
 
 private:
+    int init(const char **argv, pair<int, int> &param_count);
     void run_rtld(const char *ldname, int param_index, int param_count);
     Elf64_Addr get_interpreter_entry(const char *ld_name);
     DynObjInfo load_lsdo(const char *ld_name);
