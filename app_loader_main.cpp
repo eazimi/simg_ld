@@ -13,7 +13,7 @@ int main(int argc, char **argv, char **env)
     print_mmapped_ranges();
     // do munmap
     std::cout << "[CHILD], memory layout AFTER unmmap ..." << std::endl;
-    appLoader->memUnmapRanges();    
+    appLoader->release_parent_memory_region();    
     print_mmapped_ranges();
     return 0;
 }

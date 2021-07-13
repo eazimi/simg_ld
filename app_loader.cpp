@@ -8,7 +8,7 @@
 
 using namespace std;
 
-void AppLoader::memUnmapRanges()
+void AppLoader::release_parent_memory_region()
 {
   const string maps_path = "/proc/self/maps";
   vector<string> tokens {"/simg_ld", "[heap]", "[stack]", "[vvar]", "[vdso]"};
