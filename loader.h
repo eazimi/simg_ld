@@ -20,7 +20,7 @@ private:
     unsigned long map_elf_interpreter_load_segment(int fd, Elf64_Ehdr *ehdr, Elf64_Phdr *phdr);
     void *createNewStackForRtld(const DynObjInfo &info, int param_index, int param_count);
     void* createNewHeapForRtld();
-    void reserveMemRegion();
+    void reserve_memeory_region();
     void lockFreeMemRegions();
     void release_reserved_memory_region();
     

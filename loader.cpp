@@ -48,7 +48,7 @@ int Loader::init(const char **argv, pair<int, int> &param_count)
   _parent_pid = getpid();
 
   // reserve some 2 GB in the address space, lock remained free areas
-  reserveMemRegion();
+  reserve_memeory_region();
   lockFreeMemRegions();
   release_reserved_memory_region();
 
@@ -302,7 +302,7 @@ void Loader::lockFreeMemRegions()
   }
 }
 
-void Loader::reserveMemRegion()
+void Loader::reserve_memeory_region()
 {
   Area area;
   bool found = false;
