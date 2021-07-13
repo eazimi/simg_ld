@@ -7,9 +7,9 @@
 #include <vector>
 #include <memory>
 #include <stdio.h>
-#include "dyn_obj_info.hpp"
 #include "global.hpp"
 #include "channel.hpp"
+#include "loader_global_funcs.hpp"
 
 using namespace std;
 
@@ -29,8 +29,6 @@ private:
     void *mmapWrapper(void *addr, size_t length, int prot, int flags, int fd, off_t offset);
     void *createNewStackForRtld(const DynObjInfo &info, int param_index, int param_count);
     void getStackRegion(Area *stack);
-    void* deepCopyStack(void *newStack, const void *origStack, size_t len,
-              const void *newStackEnd, const void *origStackEnd, const DynObjInfo &info, int param_index, int param_count);
     void* createNewHeapForRtld();
     void reserveMemRegion();
     void lockFreeMemRegions();
