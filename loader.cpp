@@ -309,16 +309,16 @@ void *Loader::deepCopyStack(void *newStack, const void *origStack, size_t len,
   // the argv and env are simply arrays of pointers. The pointers point to
   // strings in other locations in the stack.
 
-  void *origArgcAddr = (void *)GET_ARGC_ADDR(origStackEnd);
+  void *origArgcAddr = (void *)get_argc_addr(origStackEnd);
   int origArgc = *(int *)origArgcAddr;
-  char **origArgv = (char **)GET_ARGV_ADDR(origStackEnd);
-  const char **origEnv = (const char **)GET_ENV_ADDR(origArgv, origArgc);
+  char **origArgv = (char **)get_argv_addr(origStackEnd);
+  const char **origEnv = (const char **)get_env_addr(origArgv, origArgc);
 
-  void *newArgcAddr = (void *)GET_ARGC_ADDR(newStackEnd);
+  void *newArgcAddr = (void *)get_argc_addr(newStackEnd);
   int newArgc = *(int *)newArgcAddr;
-  char **newArgv = (char **)GET_ARGV_ADDR(newStackEnd);
-  const char **newEnv = (const char **)GET_ENV_ADDR(newArgv, newArgc);
-  ElfW(auxv_t) *newAuxv = GET_AUXV_ADDR(newEnv);
+  char **newArgv = (char **)get_argv_addr(newStackEnd);
+  const char **newEnv = (const char **)get_env_addr(newArgv, newArgc);
+  ElfW(auxv_t) *newAuxv = get_auxv_addr(newEnv);
 
   // Patch the argv vector in the new stack
   //   First, set up the argv vector based on the original stack

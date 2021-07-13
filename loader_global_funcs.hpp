@@ -5,26 +5,26 @@
 #include <link.h>
 #include <fcntl.h>
 
-static void *GET_ARGC_ADDR(const void *stackEnd)
+static void *get_argc_addr(const void *stackEnd)
 {
     return (void *)((uintptr_t)(stackEnd) + sizeof(uintptr_t));
 }
 
 // Returns pointer to argv[0], given a pointer to end of stack
-static void *GET_ARGV_ADDR(const void *stackEnd)
+static void *get_argv_addr(const void *stackEnd)
 {
     return (void *)((unsigned long)(stackEnd) + 2 * sizeof(uintptr_t));
 }
 
 // Returns pointer to env[0], given a pointer to end of stack
-static void *GET_ENV_ADDR(char **argv, int argc)
+static void *get_env_addr(char **argv, int argc)
 {
     return (void *)&argv[argc + 1];
 }
 
 // Returns a pointer to aux vector, given a pointer to the environ vector
 // on the stack
-static ElfW(auxv_t) * GET_AUXV_ADDR(const char **env)
+static ElfW(auxv_t) *get_auxv_addr(const char **env)
 {
     ElfW(auxv_t) * auxvec;
     const char **evp = env;
