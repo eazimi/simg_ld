@@ -8,7 +8,7 @@ class AppLoader
 {
     public:
         explicit AppLoader() { reserved_area = std::make_unique<MemoryArea_t>(); }
-        void getReservedMemRange(std::pair<void *, void *> &range);
+        void get_reserved_memory_region(std::pair<void *, void *> &range);
         void memUnmapRanges();
 
     private:

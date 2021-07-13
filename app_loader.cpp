@@ -22,7 +22,7 @@ void AppLoader::memUnmapRanges()
 
 }
 
-void AppLoader::getReservedMemRange(std::pair<void *, void *> &range)
+void AppLoader::get_reserved_memory_region(std::pair<void *, void *> &range)
 {
   Area area;
   bool found = false;
