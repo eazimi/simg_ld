@@ -20,6 +20,7 @@ using namespace std;
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 #define LD_NAME "/lib64/ld-linux-x86-64.so.2"
+#define SIMG_LD_ENV_SOCKET_FD "SIMG_LD_SOCKET_FD"
 
 #define FILENAMESIZE 1024
 #define MAX_ELF_INTERP_SZ 256
@@ -307,6 +308,22 @@ static void print_mmapped_ranges(pid_t pid = -1)
             std::cout << line << std::endl;
         fb.close();
     }
+}
+
+static long int str_parse_int(const char *str, const char *error_msg)
+{
+    stringstream ss;
+    ss << error_msg << ": " << str;
+
+    char *endptr;
+    if (str == nullptr || str[0] == '\0')
+        throw std::invalid_argument(ss.str());
+
+    long int res = strtol(str, &endptr, 10);
+    if (endptr[0] != '\0')
+        throw std::invalid_argument(ss.str());
+
+    return res;
 }
 
 static int readMapsLine(int mapsfd, Area *area)

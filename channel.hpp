@@ -8,7 +8,7 @@ using namespace std;
 class Channel
 {
 private:
-    int socket_ {-1};
+    int socket_{-1};
 
 public:
     explicit Channel(int socket) : socket_(socket) {}
@@ -21,7 +21,7 @@ public:
     int send(const void *message, size_t size) const;
     size_t receive(void *message, size_t size, bool block = true) const;
 
-    inline int getSocket() const { return socket_; }
+    inline int get_socket() const { return socket_; }
 };
 
 #endif

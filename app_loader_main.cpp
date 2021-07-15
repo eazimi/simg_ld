@@ -7,8 +7,7 @@ using namespace std;
 
 int main(int argc, char **argv, char **env)
 {
-    unique_ptr<AppLoader> appLoader(new AppLoader());     
-    pair<void *, void *> range;
+    unique_ptr<AppLoader> appLoader(new AppLoader());    
     std::cout << "[CHILD], memory layout BEFORE unmmap ..." << std::endl;
     print_mmapped_ranges();
     // do munmap

@@ -5,13 +5,22 @@
 #include <sys/mman.h>
 #include <fcntl.h>
 #include <iostream>
+#include <sys/socket.h>
+#include <sys/types.h>
+#include <assert.h>
 
 using namespace std;
+
+AppLoader::AppLoader()
+{ 
+  reserved_area = std::make_unique<MemoryArea_t>();
+  initialize();
+}
 
 void AppLoader::release_parent_memory_region()
 {
   const string maps_path = "/proc/self/maps";
-  vector<string> tokens {"/simg_ld", "[heap]", "[stack]", "[vvar]", "[vdso]"};
+  vector<string> tokens{"/simg_ld", "[heap]", "[stack]", "[vvar]", "[vdso]"};
   vector<pair<unsigned long, unsigned long>> all_addr = getRanges(maps_path, tokens);
   for (auto it : all_addr)
   {
@@ -19,7 +28,6 @@ void AppLoader::release_parent_memory_region()
     if (ret != 0)
       cout << "munmap was not successful: " << strerror(errno) << " # " << std::hex << it.first << " - " << std::hex << it.second << endl;
   }
-
 }
 
 void AppLoader::get_reserved_memory_region(std::pair<void *, void *> &range)
@@ -50,4 +58,23 @@ void AppLoader::get_reserved_memory_region(std::pair<void *, void *> &range)
     range.first = reserved_area->start;
     range.second = reserved_area->end;
   }
+}
+
+void AppLoader::initialize()
+{
+  if (not std::getenv(SIMG_LD_ENV_SOCKET_FD))
+    return;
+
+  // Fetch socket from SIMG_LD_ENV_SOCKET_FD:
+  const char *fd_env = std::getenv(SIMG_LD_ENV_SOCKET_FD);
+  int fd = str_parse_int(fd_env, "Not a number in variable '" SIMG_LD_ENV_SOCKET_FD "'");
+
+  // Check the socket type/validity:
+  int type;
+  socklen_t socklen = sizeof(type);
+  assert((getsockopt(fd, SOL_SOCKET, SO_TYPE, &type, &socklen) == 0) && "Could not check socket type");
+  stringstream ss;
+  ss << "Unexpected socket type " << type;
+  auto str = ss.str().c_str();
+  assert((type == SOCK_SEQPACKET) && str);
 }
