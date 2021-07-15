@@ -10,6 +10,7 @@ set(CMAKE_BUILD_TYPE Debug)
 project(simg_ld LANGUAGES CXX C)
 
 include_directories(include)
+find_library(LIBEVENT_LIBRARY NAMES event)
 
 add_executable(simg_ld 
     simg_ld_main.cpp
@@ -20,8 +21,11 @@ add_executable(simg_ld
     channel.cpp
     global.hpp
     loader_global_funcs.hpp
+    sync_proc.hpp
+    sync_proc.cpp
     )
-target_link_libraries(simg_ld -static)
+# target_link_libraries(simg_ld ${LIBEVENT_LIBRARY} -static)
+target_link_libraries(simg_ld ${LIBEVENT_LIBRARY})
 
 add_executable(app_loader 
     app_loader_main.cpp

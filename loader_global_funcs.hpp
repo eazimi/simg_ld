@@ -25,7 +25,7 @@
 #include <csignal>
 #include <sstream>
 #include "limits.h"
-#include "channel.hpp"
+#include "sync_proc.hpp"
 #include "global.hpp"
 #include "dyn_obj_info.hpp"
 

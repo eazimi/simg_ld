@@ -26,6 +26,7 @@ private:
 
     std::unique_ptr<MemoryArea_t> g_range = nullptr;
     int process_argv(const char **argv, pair<int, int> &param_count) const;
+    unique_ptr<SyncProc> sync_proc_;
 };
 
 #endif
