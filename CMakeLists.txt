@@ -9,7 +9,6 @@ set(CMAKE_BUILD_TYPE Debug)
 
 project(simg_ld LANGUAGES CXX C)
 
-include_directories(include)
 find_library(LIBEVENT_LIBRARY NAMES event)
 
 add_executable(simg_ld 

@@ -20,8 +20,8 @@ private:
     unsigned long map_elf_interpreter_load_segment(int fd, Elf64_Ehdr *ehdr, Elf64_Phdr *phdr);
     void *create_new_stack_for_ldso(const DynObjInfo &info, int param_index, int param_count);
     void *create_new_heap_for_ldso();
-    void reserve_memeory_region();
-    void hide_free_memoty_regions();
+    void reserve_memory_region();
+    void hide_free_memory_regions();
     void release_reserved_memory_region();
 
     std::unique_ptr<MemoryArea_t> g_range = nullptr;
