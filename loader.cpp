@@ -78,15 +78,8 @@ void Loader::run(const char **argv)
   if (pid == 0) // child
   {
     ::close(sockets[1]);
-
-    ptrace(PTRACE_TRACEME, 0, nullptr, nullptr); // Parent will get notified of everything
-    int fdflags = fcntl(sockets[0], F_GETFD, 0);
-    assert((fdflags != -1 && fcntl(sockets[0], F_SETFD, fdflags & ~FD_CLOEXEC) != -1) &&
-               "Could not remove CLOEXEC for socket");
-    setenv(SIMG_LD_ENV_SOCKET_FD, std::to_string(sockets[0]).c_str(), 1);
-    raise(SIGSTOP);                              // Wait for the parent to awake me
-
-    run_rtld(ldname, 0, param_count.first);
+    run_child_process(sockets[0], [&]()
+                      { run_rtld(ldname, 0, param_count.first); });
   }
   else // parent
   {

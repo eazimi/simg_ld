@@ -1,33 +1,7 @@
 #ifndef LOADER_GLOBAL_FUNCS_HPP
 #define LOADER_GLOBAL_FUNCS_HPP
 
-#include <cstdint>
-#include <link.h>
-#include <fcntl.h>
-#include <elf.h>
-#include <stdio.h>
-#include <vector>
-#include <memory>
-#include <assert.h>
-#include <sys/stat.h>
-#include <sys/mman.h>
-#include <unistd.h>
-#include <iostream>
-#include <string.h>
-#include <stdlib.h>
-#include <errno.h>
-#include <asm/prctl.h>
-#include <syscall.h>
-#include <fstream>
-#include <sys/ptrace.h>
-#include <sys/wait.h>
-#include <sys/socket.h>
-#include <csignal>
-#include <sstream>
-#include "limits.h"
-#include "sync_proc.hpp"
-#include "global.hpp"
-#include "dyn_obj_info.hpp"
+#include "loader_headers.hpp"
 
 static void *get_argc_addr(const void *stackEnd)
 {
@@ -274,6 +248,17 @@ static void *mmapWrapper(void *addr, size_t length, int prot, int flags, int fd,
     length = ROUND_UP(length);
     void *ret = mmap(addr, length, prot, flags, fd, offset);
     return ret;
+}
+
+static void run_child_process(int socket, const function<void()> &func) 
+{
+  ptrace(PTRACE_TRACEME, 0, nullptr, nullptr); // Parent will get notified of everything
+  int fdflags = fcntl(socket, F_GETFD, 0);
+  assert((fdflags != -1 && fcntl(socket, F_SETFD, fdflags & ~FD_CLOEXEC) != -1) &&
+         "Could not remove CLOEXEC for socket");
+  setenv(SIMG_LD_ENV_SOCKET_FD, std::to_string(socket).c_str(), 1);
+  raise(SIGSTOP); // Wait for the parent to awake me
+  func();
 }
 
 #endif
