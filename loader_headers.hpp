@@ -25,6 +25,7 @@
 #include <csignal>
 #include <sstream>
 #include <functional>
+#include <unordered_set>
 #include "limits.h"
 #include "sync_proc.hpp"
 #include "global.hpp"

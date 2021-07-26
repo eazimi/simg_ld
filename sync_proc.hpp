@@ -3,6 +3,7 @@
 
 #include <event2/event.h>
 #include <memory>
+#include <unordered_set>
 #include "channel.hpp"
 
 class SyncProc
@@ -13,9 +14,10 @@ private:
     unique_ptr<event, decltype(&event_free)> signal_event_{nullptr, &event_free};
 
     Channel channel_;
+    std::unordered_set<pid_t> procs_;
 
 public:
-    explicit SyncProc(int sockfd) : channel_(sockfd) {}
+    explicit SyncProc(int sockfd, std::unordered_set<pid_t> &&procs) : channel_(sockfd), procs_(std::move(procs)) {}
     // No copy
     SyncProc(SyncProc const &) = delete;
     SyncProc &operator=(SyncProc const &) = delete;

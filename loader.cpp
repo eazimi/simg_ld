@@ -38,8 +38,10 @@ void Loader::run(const char **argv)
   int sockets[2];
   assert((socketpair(AF_LOCAL, SOCK_SEQPACKET | SOCK_CLOEXEC, 0, sockets) != -1) && "Could not create socketpair");
 
+  unordered_set<pid_t> procs;
   pid_t pid = fork();
   assert(pid >= 0 && "Could not fork child process");
+  procs.insert(pid);
   
   if (pid == 0) // child
   {
@@ -50,8 +52,27 @@ void Loader::run(const char **argv)
   else // parent
   {
     ::close(sockets[0]);
-    sync_proc_ = make_unique<SyncProc>(sockets[1]);
-
+    sync_proc_ = make_unique<SyncProc>(sockets[1], std::move(procs));
+    sync_proc_->start([](evutil_socket_t sig, short event, void *arg) {
+          auto sync_proc = (SyncProc *)arg; 
+          if (event == EV_READ) {
+            std::array<char, MESSAGE_LENGTH> buffer;
+            ssize_t size = sync_proc->get_channel().receive(buffer.data(), buffer.size(), false);
+            if (size == -1 && errno != EAGAIN) {
+              DLOG(ERROR, "%s\n", strerror(errno));
+              exit(-1);
+            }
+            // if (!sync_proc->handle_message(buffer.data(), size))
+            //   sync_proc->break_loop();
+          } else if (event == EV_SIGNAL) {
+            if(sig == SIGCHLD)
+              sync_proc->handle_waitpid();
+          } else {
+            DLOG(ERROR, "Unexpected event\n");
+            exit(-1);
+          }
+        });
+                      
     int status;
     auto wait_ret = waitpid(pid, &status, 0);
 
