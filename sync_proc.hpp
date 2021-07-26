@@ -26,6 +26,7 @@ public:
     void start(void (*handler)(int, short, void *));
     void dispatch() const;
     void break_loop() const;
+    void handle_waitpid();
 
     inline const Channel &get_channel() { return channel_; }
 };
