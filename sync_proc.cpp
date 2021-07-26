@@ -85,3 +85,10 @@ void SyncProc::handle_waitpid()
     }
   }
 }
+
+void SyncProc::remove_process(pid_t pid)
+{
+    auto it = procs_.find(pid);
+    if(it != procs_.end())
+        procs_.erase(it);    
+}

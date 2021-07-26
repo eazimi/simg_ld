@@ -27,6 +27,7 @@ public:
     void dispatch() const;
     void break_loop() const;
     void handle_waitpid();
+    void remove_process(pid_t pid);
 
     inline const Channel &get_channel() { return channel_; }
 };
