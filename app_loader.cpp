@@ -11,10 +11,10 @@
 
 using namespace std;
 
-AppLoader::AppLoader()
+AppLoader::AppLoader(const char* socket)
 { 
   reserved_area = std::make_unique<MemoryArea_t>();
-  // initialize();
+  init(socket);
 }
 
 void AppLoader::release_parent_memory_region()
@@ -60,7 +60,7 @@ void AppLoader::get_reserved_memory_region(std::pair<void *, void *> &range)
   }
 }
 
-void AppLoader::initialize(const char *socket)
+void AppLoader::init(const char *socket)
 {
   // Fetch socket from SIMG_LD_ENV_SOCKET_FD:
   int fd = str_parse_int(socket, "Socket id is not in a numeric format");
@@ -73,4 +73,5 @@ void AppLoader::initialize(const char *socket)
   ss << "Unexpected socket type " << type;
   auto str = ss.str().c_str();
   assert((type == SOCK_SEQPACKET) && str);
+  cout << "app_loader: passed socket id is good to go ..." << endl;
 }

@@ -8,7 +8,8 @@ using namespace std;
 int main(int argc, char **argv, char **env)
 {
     cout << "in app_loader main()" << endl;
-    unique_ptr<AppLoader> appLoader(new AppLoader());    
+    cout << "argc: " << argc << endl << "argv[0]: " << argv[0] << endl << "argv[1]: " << argv[argc-1] << endl;
+    unique_ptr<AppLoader> appLoader(new AppLoader(argv[argc-1]));    
     // std::cout << "[CHILD], memory layout BEFORE unmmap ..." << std::endl;
     // print_mmapped_ranges();
     // do munmap

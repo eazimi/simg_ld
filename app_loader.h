@@ -7,13 +7,13 @@
 class AppLoader
 {
     public:
-        explicit AppLoader();
+        explicit AppLoader(const char* socket);
         void get_reserved_memory_region(std::pair<void *, void *> &range);
         void release_parent_memory_region();
 
     private:
         std::unique_ptr<MemoryArea_t> reserved_area;
-        void initialize(const char *socket);
+        void init(const char *socket);
 };
 
 #endif

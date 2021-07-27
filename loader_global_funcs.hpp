@@ -117,7 +117,8 @@ static void getStackRegion(Area *stack) // OUT
 // in the new stack region.
 static void *deepCopyStack(void *newStack, const void *origStack, size_t len,
                            const void *newStackEnd, const void *origStackEnd,
-                           const DynObjInfo &info, int param_index, int param_count)
+                           const DynObjInfo &info, int param_index, int param_count, 
+                           int socket_id)
 {
     // Return early if any pointer is NULL
     if (!newStack || !origStack ||
@@ -202,23 +203,27 @@ static void *deepCopyStack(void *newStack, const void *origStack, size_t len,
     //   "/path/to/kernel-loader".
     // off_t argvDelta = (uintptr_t)getenv("TARGET_LD") - (uintptr_t)origArgv;
 
-    // in the parent process
+    // in the child process
     if (param_index == 0)
     {
         off_t argvDelta = (uintptr_t)origArgv[1] - (uintptr_t)origArgv;
-        newArgv[0] = (char *)((uintptr_t)newArgv + (uintptr_t)argvDelta);
-        newArgv[param_count + 1] = nullptr;
+        newArgv[0] = (char *)((uintptr_t)newArgv + (uintptr_t)argvDelta);        
+        cout << "newArgv[0] is: " << newArgv[0] << endl;
+        cout << "param_count is: " << param_count << endl;
+        strcpy(newArgv[param_count + 1], to_string(socket_id).c_str());
+        newArgv[param_count + 2] = nullptr;
+        *(int *)newArgcAddr = param_count + 2;
     }
-    else // in the child process
+    else // in the parent process
     {
         newArgv[0] = newArgv[param_index];
         auto i{0};
         for (; i < param_count; i++)
             newArgv[i + 1] = newArgv[param_index + i];
         newArgv[i + 1] = nullptr;
-        // *(int *)newArgcAddr = param_count + 1;
+        *(int *)newArgcAddr = param_count + 1;
     }
-    *(int *)newArgcAddr = param_count + 1;
+    // *(int *)newArgcAddr = param_count + 1;
 
     // Patch the env vector in the new stack
     for (int i = 0; origEnv[i] != nullptr; i++)

@@ -47,7 +47,7 @@ void Loader::run(const char **argv)
   {
     ::close(sockets[1]);
     run_child_process(sockets[0], [&]()
-                      { run_rtld(ldname, 0, param_count.first); });
+                      { run_rtld(ldname, 0, param_count.first, sockets[0]); });
   }
   else // parent
   {
@@ -86,7 +86,7 @@ void Loader::run(const char **argv)
 
 // This function loads in ld.so, sets up a separate stack for it, and jumps
 // to the entry point of ld.so
-void Loader::run_rtld(const char *ldname, int param_index, int param_count)
+void Loader::run_rtld(const char *ldname, int param_index, int param_count, int socket_id)
 {
   int rc = -1;
 
@@ -100,7 +100,7 @@ void Loader::run_rtld(const char *ldname, int param_index, int param_count)
   }
 
   // Create new stack region to be used by RTLD
-  void *newStack = create_new_stack_for_ldso(ldso, param_index, param_count);
+  void *newStack = create_new_stack_for_ldso(ldso, param_index, param_count, socket_id);
   if (!newStack)
   {
     DLOG(ERROR, "Error creating new stack for RTLD. Exiting...\n");
@@ -171,7 +171,7 @@ void *Loader::create_new_heap_for_ldso()
 //  1. Creates a new stack region to be used for initialization of RTLD (ld.so)
 //  2. Deep copies the original stack (from the kernel) in the new stack region
 //  3. Returns a pointer to the beginning of stack in the new stack region
-void *Loader::create_new_stack_for_ldso(const DynObjInfo &info, int param_index, int param_count)
+void *Loader::create_new_stack_for_ldso(const DynObjInfo &info, int param_index, int param_count, int socket_id)
 {
   Area stack;
   char stackEndStr[20] = {0};
@@ -226,7 +226,7 @@ void *Loader::create_new_stack_for_ldso(const DynObjInfo &info, int param_index,
   // 2. Deep copy stack
   newStackEnd = deepCopyStack(newStack, stack.addr, stack.size,
                               (void *)newStackEnd, (void *)origStackEnd,
-                              info, param_index, param_count);
+                              info, param_index, param_count, socket_id);
 
   return newStackEnd;
 }
