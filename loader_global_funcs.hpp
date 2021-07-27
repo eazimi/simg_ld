@@ -256,7 +256,6 @@ static void run_child_process(int socket, const function<void()> &func)
   int fdflags = fcntl(socket, F_GETFD, 0);
   assert((fdflags != -1 && fcntl(socket, F_SETFD, fdflags & ~FD_CLOEXEC) != -1) &&
          "Could not remove CLOEXEC for socket");
-  setenv(SIMG_LD_ENV_SOCKET_FD, std::to_string(socket).c_str(), 1);
   raise(SIGSTOP); // Wait for the parent to awake me
   func();
 }

@@ -13,7 +13,7 @@ class AppLoader
 
     private:
         std::unique_ptr<MemoryArea_t> reserved_area;
-        void initialize();
+        void initialize(const char *socket);
 };
 
 #endif

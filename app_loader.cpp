@@ -14,7 +14,7 @@ using namespace std;
 AppLoader::AppLoader()
 { 
   reserved_area = std::make_unique<MemoryArea_t>();
-  initialize();
+  // initialize();
 }
 
 void AppLoader::release_parent_memory_region()
@@ -60,14 +60,10 @@ void AppLoader::get_reserved_memory_region(std::pair<void *, void *> &range)
   }
 }
 
-void AppLoader::initialize()
+void AppLoader::initialize(const char *socket)
 {
-  if (not std::getenv(SIMG_LD_ENV_SOCKET_FD))
-    return;
-
   // Fetch socket from SIMG_LD_ENV_SOCKET_FD:
-  const char *fd_env = std::getenv(SIMG_LD_ENV_SOCKET_FD);
-  int fd = str_parse_int(fd_env, "Not a number in variable '" SIMG_LD_ENV_SOCKET_FD "'");
+  int fd = str_parse_int(socket, "Socket id is not in a numeric format");
 
   // Check the socket type/validity:
   int type;

@@ -20,7 +20,6 @@ using namespace std;
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 #define LD_NAME "/lib64/ld-linux-x86-64.so.2"
-#define SIMG_LD_ENV_SOCKET_FD "SIMG_LD_SOCKET_FD"
 
 constexpr unsigned MESSAGE_LENGTH = 512;
 
