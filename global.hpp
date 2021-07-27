@@ -172,10 +172,10 @@ static pid_t _parent_pid;
 
 static void pause_run(std::string message)
 {
-    std::cout << message << std::endl;
-    std::cout << "press a key to continue ..." << std::endl;
-    std::string str;
-    std::cin >> str;
+    // std::cout << message << std::endl;
+    // std::cout << "press a key to continue ..." << std::endl;
+    // std::string str;
+    // std::cin >> str;
 }
 
 /* Read non-null character, return null if EOF */

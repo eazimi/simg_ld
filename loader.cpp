@@ -92,8 +92,6 @@ void Loader::run_rtld(const char *ldname, int param_index, int param_count)
 
   // Load RTLD (ld.so)
   DynObjInfo ldso = load_lsdo(ldname);
-  std::cout << ((getpid() == _parent_pid) ? "[PARENT], " : "[CHILD], ") << "lsdo.baseAddr: "
-            << std::hex << ldso.get_base_addr() << std::endl;
 
   if (ldso.get_base_addr() == NULL || ldso.get_entry_point() == NULL)
   {
@@ -121,7 +119,7 @@ void Loader::run_rtld(const char *ldname, int param_index, int param_count)
   ss << ((getpid() == _parent_pid) ? "[PARENT], " : "[CHILD], ")
      << "before jumping to sp: " << std::dec << getpid();
   pause_run(ss.str());
-  print_mmapped_ranges(getpid());
+  // print_mmapped_ranges(getpid());
 
   // Pointer to the ld.so entry point
   void *ldso_entrypoint = ldso.get_entry_point();
