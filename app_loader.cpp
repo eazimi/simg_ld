@@ -73,5 +73,5 @@ void AppLoader::init(const char *socket)
   ss << "Unexpected socket type " << type;
   auto str = ss.str().c_str();
   assert((type == SOCK_SEQPACKET) && str);
-  cout << "app_loader: passed socket id is good to go ..." << endl;
+  DLOG(INFO, "Child process found expected socket type");
 }

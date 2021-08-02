@@ -32,6 +32,7 @@ void SyncProc::break_loop() const
 
 void SyncProc::handle_waitpid()
 {
+  DLOG(INFO, "Check for wait event\n");
   int status;
   pid_t pid;
   while ((pid = waitpid(-1, &status, WNOHANG)) != 0) {
@@ -49,7 +50,7 @@ void SyncProc::handle_waitpid()
     unordered_set<pid_t>::iterator it = procs_.find(pid);
     if(it == procs_.end())
     {
-        DLOG(ERROR, "Process not found\n");
+        DLOG(ERROR, "Child process not found\n");
         return;
     }
     else {
@@ -77,8 +78,12 @@ void SyncProc::handle_waitpid()
       }
       else if (WIFSIGNALED(status)) {
         DLOG(ERROR, "CRASH IN THE PROGRAM, %i\n", status);
+        for (auto process : procs_)
+          kill(process, SIGKILL);
         exit(-1);
-      } else if (WIFEXITED(status)) {
+      }
+      else if (WIFEXITED(status))
+      {
         DLOG(INFO, "Child process is over\n");
         procs_.erase(it);
       }
