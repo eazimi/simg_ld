@@ -56,15 +56,21 @@ void Loader::run(const char **argv)
     sync_proc_->start([](evutil_socket_t sig, short event, void *arg) {
           auto sync_proc = (SyncProc *)arg; 
           if (event == EV_READ) {
+            DLOG(NOISE, "parent: EV_READ received\n");
             std::array<char, MESSAGE_LENGTH> buffer;
             ssize_t size = sync_proc->get_channel().receive(buffer.data(), buffer.size(), false);
             if (size == -1 && errno != EAGAIN) {
               DLOG(ERROR, "%s\n", strerror(errno));
               exit(-1);
             }
+
+            s_message_t base_message;
+            memcpy(&base_message, buffer.data(), sizeof(base_message));
+            cout << "in parent, child sent a message: pid is " << base_message.pid << endl; 
             // if (!sync_proc->handle_message(buffer.data(), size))
             //   sync_proc->break_loop();
           } else if (event == EV_SIGNAL) {
+            DLOG(NOISE, "parent: EV_SIGNAL received\n");
             if(sig == SIGCHLD)
               sync_proc->handle_waitpid();
           } else {
@@ -72,15 +78,26 @@ void Loader::run(const char **argv)
             exit(-1);
           }
         });
+
+    DLOG(INFO, "Waiting for the child process\n");
                       
     int status;
-    auto wait_ret = waitpid(pid, &status, 0);
+    // The child process SIGSTOP itself to signal it's ready
+    // TODO: check for the __WALL in the options parameter in waitpid()
+    assert((waitpid(pid, &status, 0) == pid && WIFSTOPPED(status) && WSTOPSIG(status) == SIGSTOP) &&
+           "Could not wait child process");
+    DLOG(INFO, "parent received some signals from child\n");
 
+#ifdef __linux__
     ptrace(PTRACE_SETOPTIONS, pid, nullptr, PTRACE_O_TRACEEXIT); // I also want to know about the child's exit()
     ptrace(PTRACE_CONT, pid, 0, 0);                              // Let's awake the child now
+#else
+#error "no ptrace equivalent coded for this platform"
+#endif
 
-    wait_ret = waitpid(pid, &status, 0);
+    DLOG(INFO, "in parent: before run_rtld()\n");
     run_rtld(ldname, param_index, param_count.second);
+    // while(true);
   }
 }
 

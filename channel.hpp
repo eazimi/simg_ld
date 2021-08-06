@@ -1,9 +1,24 @@
 #ifndef CHANNEL_HPP
 #define CHANNEL_HPP
 
+#include "global.hpp"
 #include <string>
 
 using namespace std;
+
+enum class MessageType
+{
+    NONE,
+    READY,
+    CONTINUE,
+    FINISH
+};
+
+/* Child->Parent */
+struct s_message_t {
+  MessageType type;
+  pid_t pid;
+};
 
 class Channel
 {
@@ -25,15 +40,16 @@ public:
     // send
     int send(const void *message, size_t size) const;
     template <class M>
-    inline typename std::enable_if_t<messageType<M>(), int> send(M const &m) const
+    typename std::enable_if_t<messageType<M>(), int> send(M const &m) const
     {
+        // DLOG(INFO, "Channel: in send()\n");
         return this->send(&m, sizeof(M));
     }
 
     // receive
     size_t receive(void *message, size_t size, bool block = true) const;
     template <class M>
-    inline typename std::enable_if_t<messageType<M>(), ssize_t> receive(M &m) const
+    typename std::enable_if_t<messageType<M>(), ssize_t> receive(M &m) const
     {
         return this->receive(&m, sizeof(M));
     }

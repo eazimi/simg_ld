@@ -13,7 +13,9 @@ add_executable(app_loader
     app_loader_main.cpp
     app_loader.h
     app_loader.cpp
-    global.hpp)
+    global.hpp
+    channel.hpp
+    channel.cpp)
 
 add_executable(simg_ld 
     simg_ld_main.cpp

@@ -208,8 +208,8 @@ static void *deepCopyStack(void *newStack, const void *origStack, size_t len,
     {
         off_t argvDelta = (uintptr_t)origArgv[1] - (uintptr_t)origArgv;
         newArgv[0] = (char *)((uintptr_t)newArgv + (uintptr_t)argvDelta);        
-        cout << "newArgv[0] is: " << newArgv[0] << endl;
-        cout << "param_count is: " << param_count << endl;
+        // cout << "newArgv[0] is: " << newArgv[0] << endl;
+        // cout << "param_count is: " << param_count << endl;
         strcpy(newArgv[param_count + 1], to_string(socket_id).c_str());
         newArgv[param_count + 2] = nullptr;
         *(int *)newArgcAddr = param_count + 2;
@@ -255,14 +255,63 @@ static void *mmapWrapper(void *addr, size_t length, int prot, int flags, int fd,
     return ret;
 }
 
-static void run_child_process(int socket, const function<void()> &func) 
+static void run_child_process(int socket, const function<void()> &func)
 {
-  ptrace(PTRACE_TRACEME, 0, nullptr, nullptr); // Parent will get notified of everything
-  int fdflags = fcntl(socket, F_GETFD, 0);
-  assert((fdflags != -1 && fcntl(socket, F_SETFD, fdflags & ~FD_CLOEXEC) != -1) &&
-         "Could not remove CLOEXEC for socket");
-  raise(SIGSTOP); // Wait for the parent to awake me
-  func();
+#ifdef __linux__
+    // Make sure we do not outlive our parent
+    sigset_t mask;
+    sigemptyset(&mask);
+    assert(sigprocmask(SIG_SETMASK, &mask, nullptr) >= 0 && "Could not unblock signals");
+    assert(prctl(PR_SET_PDEATHSIG, SIGHUP) == 0 && "Could not PR_SET_PDEATHSIG");
+#endif
+    
+    int fdflags = fcntl(socket, F_GETFD, 0);
+    assert((fdflags != -1 && fcntl(socket, F_SETFD, fdflags & ~FD_CLOEXEC) != -1) &&
+           "Could not remove CLOEXEC for socket");
+    
+    // DLOG(NOISE, "run_child_process, before raise(SIGSTOP)\n");
+    // int result = raise(SIGSTOP);
+    // DLOG(NOISE, "run_child_process, after raise(SIGSTOP)\n");
+
+    func();
+
+//     // #####################################
+//     unique_ptr<Channel> channel_ = make_unique<Channel>(socket);
+
+//     // Check the socket type/validity:
+//     int type;
+//     socklen_t socklen = sizeof(type);
+//     assert((getsockopt(socket, SOL_SOCKET, SO_TYPE, &type, &socklen) == 0) && "Could not check socket type");
+//     stringstream ss;
+//     ss << "Unexpected socket type " << type;
+//     auto str = ss.str().c_str();
+//     assert((type == SOCK_SEQPACKET) && str);
+//     // DLOG(INFO, "app_loader found expected socket type\n");
+
+//     // Wait for the parent:
+//     errno = 0;
+// #if defined __linux__
+//     ptrace(PTRACE_TRACEME, 0, nullptr, nullptr);
+// #elif defined BSD
+//     ptrace(PT_TRACE_ME, 0, nullptr, 0);
+// #else
+// #error "no ptrace equivalent coded for this platform"
+// #endif
+
+//     // DLOG(NOISE, "AppLoader, getpid() = %i\n", getpid());
+//     // DLOG(NOISE, "AppLoader::init(), before raise(SIGSTOP)\n");
+//     // int result = raise(SIGSTOP);
+//     // DLOG(NOISE, "AppLoader::init(), after raise(SIGSTOP)\n");
+
+//     ss << "Could not wait for the parent (errno = %d: %s)" << errno << strerror(errno);
+//     str = ss.str().c_str();
+//     DLOG(NOISE, "run_chid_process(): before SIGSTOP\n");
+//     assert((errno == 0 && raise(SIGSTOP) == 0) && str); // Wait for the parent to awake me
+//     DLOG(NOISE, "run_chid_process(): PTRACE_CONT received\n");
+
+//     s_message_t message{MessageType::READY, getpid()};
+//     assert(channel_->send(message) == 0 && "Could not send the initial message.");
+//     DLOG(INFO, "message sent to the parent by app_loader\n");
 }
 
 // returns the parent's parameters start index in the command line parameters

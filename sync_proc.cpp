@@ -8,6 +8,7 @@
 
 void SyncProc::start(void (*handler)(int, short, void *))
 {
+    // DLOG(INFO, "SyncProc: start called\n");
     auto *base = event_base_new();
     base_.reset(base);
 
@@ -18,20 +19,23 @@ void SyncProc::start(void (*handler)(int, short, void *))
     auto *signal_event = event_new(base, SIGCHLD, EV_SIGNAL | EV_PERSIST, handler, this);
     event_add(signal_event, nullptr);
     signal_event_.reset(signal_event);
+    dispatch();
 }
 
 void SyncProc::dispatch() const
 {
+    // DLOG(INFO, "SyncProc: dispatch called\n");
     event_base_dispatch(base_.get());
 }
 
 void SyncProc::break_loop() const
 {
+    DLOG(INFO, "SyncProc: break_loop called\n");
     event_base_loopbreak(base_.get());
 }
 
 void SyncProc::handle_waitpid()
-{
+{  
   DLOG(INFO, "Check for wait event\n");
   int status;
   pid_t pid;

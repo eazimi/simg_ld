@@ -22,7 +22,7 @@
 #include <sys/ptrace.h>
 #include <sys/wait.h>
 #include <sys/socket.h>
-#include <csignal>
+#include <sys/prctl.h>
 #include <sstream>
 #include <functional>
 #include <unordered_set>

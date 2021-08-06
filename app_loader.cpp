@@ -1,13 +1,12 @@
 #include "app_loader.h"
-#include <stdio.h>
 #include <stdlib.h>
 #include <limits.h>
-#include <sys/mman.h>
 #include <fcntl.h>
-#include <iostream>
 #include <sys/socket.h>
 #include <sys/types.h>
+#include <sys/ptrace.h>
 #include <assert.h>
+#include <csignal>
 
 using namespace std;
 
@@ -62,8 +61,10 @@ void AppLoader::get_reserved_memory_region(std::pair<void *, void *> &range)
 
 void AppLoader::init(const char *socket)
 {
-  // Fetch socket from SIMG_LD_ENV_SOCKET_FD:
   int fd = str_parse_int(socket, "Socket id is not in a numeric format");
+  // DLOG(INFO, "app_loader found socket FD %i\n", fd);
+
+  channel_ = make_unique<Channel>(fd);
 
   // Check the socket type/validity:
   int type;
@@ -73,5 +74,40 @@ void AppLoader::init(const char *socket)
   ss << "Unexpected socket type " << type;
   auto str = ss.str().c_str();
   assert((type == SOCK_SEQPACKET) && str);
-  DLOG(INFO, "Child process found expected socket type");
+  // DLOG(INFO, "app_loader found expected socket type\n");
+
+  // Wait for the parent:
+  errno = 0;
+#if defined __linux__
+  ptrace(PTRACE_TRACEME, 0, nullptr, nullptr);
+#elif defined BSD
+  ptrace(PT_TRACE_ME, 0, nullptr, 0);
+#else
+#error "no ptrace equivalent coded for this platform"
+#endif
+
+  // DLOG(NOISE, "AppLoader, getpid() = %i\n", getpid());
+  // DLOG(NOISE, "AppLoader::init(), before raise(SIGSTOP)\n");
+  // int result = raise(SIGSTOP);
+  // DLOG(NOISE, "AppLoader::init(), after raise(SIGSTOP)\n");
+
+  ss << "Could not wait for the parent (errno = %d: %s)" << errno << strerror(errno);
+  str = ss.str().c_str();
+  DLOG(NOISE, "before SIGSTOP in app_loader\n");
+  assert((errno == 0 && raise(SIGSTOP) == 0) && str); // Wait for the parent to awake me
+  DLOG(NOISE, "app_loader: PTRACE_CONT received\n");
+
+  s_message_t message {MessageType::READY, getpid()};
+  assert(channel_->send(message) == 0 && "Could not send the initial message.");
+  DLOG(INFO, "message sent to the parent by app_loader\n");
+  handle_message();
+  // DLOG(ERROR, "never reach this line ...\n");
+}
+
+void AppLoader::handle_message() const
+{
+  while(true)
+  {
+    // DLOG(INFO, "waiting for messages from parent ...\n");
+  }
 }
