@@ -268,50 +268,7 @@ static void run_child_process(int socket, const function<void()> &func)
     int fdflags = fcntl(socket, F_GETFD, 0);
     assert((fdflags != -1 && fcntl(socket, F_SETFD, fdflags & ~FD_CLOEXEC) != -1) &&
            "Could not remove CLOEXEC for socket");
-    
-    // DLOG(NOISE, "run_child_process, before raise(SIGSTOP)\n");
-    // int result = raise(SIGSTOP);
-    // DLOG(NOISE, "run_child_process, after raise(SIGSTOP)\n");
-
     func();
-
-//     // #####################################
-//     unique_ptr<Channel> channel_ = make_unique<Channel>(socket);
-
-//     // Check the socket type/validity:
-//     int type;
-//     socklen_t socklen = sizeof(type);
-//     assert((getsockopt(socket, SOL_SOCKET, SO_TYPE, &type, &socklen) == 0) && "Could not check socket type");
-//     stringstream ss;
-//     ss << "Unexpected socket type " << type;
-//     auto str = ss.str().c_str();
-//     assert((type == SOCK_SEQPACKET) && str);
-//     // DLOG(INFO, "app_loader found expected socket type\n");
-
-//     // Wait for the parent:
-//     errno = 0;
-// #if defined __linux__
-//     ptrace(PTRACE_TRACEME, 0, nullptr, nullptr);
-// #elif defined BSD
-//     ptrace(PT_TRACE_ME, 0, nullptr, 0);
-// #else
-// #error "no ptrace equivalent coded for this platform"
-// #endif
-
-//     // DLOG(NOISE, "AppLoader, getpid() = %i\n", getpid());
-//     // DLOG(NOISE, "AppLoader::init(), before raise(SIGSTOP)\n");
-//     // int result = raise(SIGSTOP);
-//     // DLOG(NOISE, "AppLoader::init(), after raise(SIGSTOP)\n");
-
-//     ss << "Could not wait for the parent (errno = %d: %s)" << errno << strerror(errno);
-//     str = ss.str().c_str();
-//     DLOG(NOISE, "run_chid_process(): before SIGSTOP\n");
-//     assert((errno == 0 && raise(SIGSTOP) == 0) && str); // Wait for the parent to awake me
-//     DLOG(NOISE, "run_chid_process(): PTRACE_CONT received\n");
-
-//     s_message_t message{MessageType::READY, getpid()};
-//     assert(channel_->send(message) == 0 && "Could not send the initial message.");
-//     DLOG(INFO, "message sent to the parent by app_loader\n");
 }
 
 // returns the parent's parameters start index in the command line parameters

@@ -36,7 +36,6 @@ void SyncProc::break_loop() const
 
 void SyncProc::handle_waitpid()
 {  
-  DLOG(INFO, "Check for wait event\n");
   int status;
   pid_t pid;
   while ((pid = waitpid(-1, &status, WNOHANG)) != 0) {
@@ -73,7 +72,7 @@ void SyncProc::handle_waitpid()
 
       // We don't care about signals, just reinject them:
       if (WIFSTOPPED(status)) {
-        DLOG(INFO, "Stopped with signal %i", (int) WSTOPSIG(status));
+        DLOG(INFO, "Stopped with signal %i\n", (int) WSTOPSIG(status));
         errno = 0;
 #ifdef __linux__
         ptrace(PTRACE_CONT, pid, 0, WSTOPSIG(status));

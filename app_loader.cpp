@@ -49,7 +49,6 @@ void AppLoader::get_reserved_memory_region(std::pair<void *, void *> &range)
   }
   close(mapsfd);
 
-  // if (found && (g_range == nullptr))
   if (found)
   {
     reserved_area->start = (VA)area.addr - _3_GB;
@@ -62,8 +61,6 @@ void AppLoader::get_reserved_memory_region(std::pair<void *, void *> &range)
 void AppLoader::init(const char *socket)
 {
   int fd = str_parse_int(socket, "Socket id is not in a numeric format");
-  // DLOG(INFO, "app_loader found socket FD %i\n", fd);
-
   channel_ = make_unique<Channel>(fd);
 
   // Check the socket type/validity:
@@ -74,7 +71,6 @@ void AppLoader::init(const char *socket)
   ss << "Unexpected socket type " << type;
   auto str = ss.str().c_str();
   assert((type == SOCK_SEQPACKET) && str);
-  // DLOG(INFO, "app_loader found expected socket type\n");
 
   // Wait for the parent:
   errno = 0;
@@ -86,14 +82,9 @@ void AppLoader::init(const char *socket)
 #error "no ptrace equivalent coded for this platform"
 #endif
 
-  // DLOG(NOISE, "AppLoader, getpid() = %i\n", getpid());
-  // DLOG(NOISE, "AppLoader::init(), before raise(SIGSTOP)\n");
-  // int result = raise(SIGSTOP);
-  // DLOG(NOISE, "AppLoader::init(), after raise(SIGSTOP)\n");
-
   ss << "Could not wait for the parent (errno = %d: %s)" << errno << strerror(errno);
   str = ss.str().c_str();
-  DLOG(NOISE, "before SIGSTOP in app_loader\n");
+  DLOG(NOISE, "app_loader: before SIGSTOP\n");
   assert((errno == 0 && raise(SIGSTOP) == 0) && str); // Wait for the parent to awake me
   DLOG(NOISE, "app_loader: PTRACE_CONT received\n");
 
@@ -101,13 +92,10 @@ void AppLoader::init(const char *socket)
   assert(channel_->send(message) == 0 && "Could not send the initial message.");
   DLOG(INFO, "message sent to the parent by app_loader\n");
   handle_message();
-  // DLOG(ERROR, "never reach this line ...\n");
+  DLOG(ERROR, "never reach this line ...\n");
 }
 
 void AppLoader::handle_message() const
 {
-  while(true)
-  {
-    // DLOG(INFO, "waiting for messages from parent ...\n");
-  }
+  while(true);
 }

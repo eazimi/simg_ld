@@ -78,26 +78,6 @@ void Loader::run(const char **argv)
             exit(-1);
           }
         });
-
-    DLOG(INFO, "Waiting for the child process\n");
-                      
-    int status;
-    // The child process SIGSTOP itself to signal it's ready
-    // TODO: check for the __WALL in the options parameter in waitpid()
-    assert((waitpid(pid, &status, 0) == pid && WIFSTOPPED(status) && WSTOPSIG(status) == SIGSTOP) &&
-           "Could not wait child process");
-    DLOG(INFO, "parent received some signals from child\n");
-
-#ifdef __linux__
-    ptrace(PTRACE_SETOPTIONS, pid, nullptr, PTRACE_O_TRACEEXIT); // I also want to know about the child's exit()
-    ptrace(PTRACE_CONT, pid, 0, 0);                              // Let's awake the child now
-#else
-#error "no ptrace equivalent coded for this platform"
-#endif
-
-    DLOG(INFO, "in parent: before run_rtld()\n");
-    run_rtld(ldname, param_index, param_count.second);
-    // while(true);
   }
 }
 

@@ -42,7 +42,6 @@ public:
     template <class M>
     typename std::enable_if_t<messageType<M>(), int> send(M const &m) const
     {
-        // DLOG(INFO, "Channel: in send()\n");
         return this->send(&m, sizeof(M));
     }
 
