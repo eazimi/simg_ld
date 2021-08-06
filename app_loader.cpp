@@ -97,5 +97,26 @@ void AppLoader::init(const char *socket)
 
 void AppLoader::handle_message() const
 {
-  while(true);
+  while (true)
+  {
+    std::array<char, MESSAGE_LENGTH> message_buffer;
+    ssize_t received_size = channel_->receive(message_buffer.data(), message_buffer.size());
+    assert(received_size >= 0 && "Could not receive commands from the model-checker");
+
+    const s_message_t *message = (s_message_t *)message_buffer.data();
+    switch (message->type)
+    {
+      case MessageType::CONTINUE:
+        DLOG(INFO, "app_loader: parent sent a message, pid is: %i\n", message->pid);
+
+        // s_message_t base_message;
+        // base_message.type = MessageType::READY;
+        // base_message.pid = getpid();
+        // channel_->send(base_message);
+        break;
+
+      default:
+        DLOG(ERROR, "app_loader: parent sent an invalid message, \n");  
+    }
+  }
 }

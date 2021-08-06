@@ -66,7 +66,13 @@ void Loader::run(const char **argv)
 
             s_message_t base_message;
             memcpy(&base_message, buffer.data(), sizeof(base_message));
-            cout << "in parent, child sent a message: pid is " << base_message.pid << endl; 
+            DLOG(INFO, "parent: child sent a message, pid is %i\n", base_message.pid);
+
+            base_message.pid = getpid();
+            base_message.type = MessageType::CONTINUE;
+            DLOG(INFO, "parent: sending a message to the child ...\n");
+            sync_proc->get_channel().send(base_message);
+
             // if (!sync_proc->handle_message(buffer.data(), size))
             //   sync_proc->break_loop();
           } else if (event == EV_SIGNAL) {
