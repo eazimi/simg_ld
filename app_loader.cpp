@@ -1,17 +1,17 @@
 #include "app_loader.h"
-#include <stdlib.h>
-#include <limits.h>
-#include <fcntl.h>
-#include <sys/socket.h>
-#include <sys/types.h>
-#include <sys/ptrace.h>
 #include <assert.h>
 #include <csignal>
+#include <fcntl.h>
+#include <limits.h>
+#include <stdlib.h>
+#include <sys/ptrace.h>
+#include <sys/socket.h>
+#include <sys/types.h>
 
 using namespace std;
 
 AppLoader::AppLoader(const char* socket)
-{ 
+{
   reserved_area = std::make_unique<MemoryArea_t>();
   init(socket);
 }
@@ -21,46 +21,42 @@ void AppLoader::release_parent_memory_region()
   const string maps_path = "/proc/self/maps";
   vector<string> tokens{"/simg_ld", "[heap]", "[stack]", "[vvar]", "[vdso]"};
   vector<pair<unsigned long, unsigned long>> all_addr = getRanges(maps_path, tokens);
-  for (auto it : all_addr)
-  {
-    auto ret = munmap((void *)it.first, it.second - it.first);
+  for (auto it : all_addr) {
+    auto ret = munmap((void*)it.first, it.second - it.first);
     if (ret != 0)
-      cout << "munmap was not successful: " << strerror(errno) << " # " << std::hex << it.first << " - " << std::hex << it.second << endl;
+      cout << "munmap was not successful: " << strerror(errno) << " # " << std::hex << it.first << " - " << std::hex
+           << it.second << endl;
   }
 }
 
-void AppLoader::get_reserved_memory_region(std::pair<void *, void *> &range)
+void AppLoader::get_reserved_memory_region(std::pair<void*, void*>& range)
 {
   Area area;
   bool found = false;
   int mapsfd = open("/proc/self/maps", O_RDONLY);
-  if (mapsfd < 0)
-  {
+  if (mapsfd < 0) {
     DLOG(ERROR, "Failed to open proc maps\n");
     return;
   }
-  while (readMapsLine(mapsfd, &area))
-  {
-    if (strstr(area.name, "[stack]"))
-    {
+  while (readMapsLine(mapsfd, &area)) {
+    if (strstr(area.name, "[stack]")) {
       found = true;
       break;
     }
   }
   close(mapsfd);
 
-  if (found)
-  {
+  if (found) {
     reserved_area->start = (VA)area.addr - _3_GB;
-    reserved_area->end = (VA)area.addr - _1_GB;
-    range.first = reserved_area->start;
-    range.second = reserved_area->end;
+    reserved_area->end   = (VA)area.addr - _1_GB;
+    range.first          = reserved_area->start;
+    range.second         = reserved_area->end;
   }
 }
 
-void AppLoader::init(const char *socket)
+void AppLoader::init(const char* socket)
 {
-  int fd = str_parse_int(socket, "Socket id is not in a numeric format");
+  int fd   = str_parse_int(socket, "Socket id is not in a numeric format");
   channel_ = make_unique<Channel>(fd);
 
   // Check the socket type/validity:
@@ -88,7 +84,7 @@ void AppLoader::init(const char *socket)
   assert((errno == 0 && raise(SIGSTOP) == 0) && str); // Wait for the parent to awake me
   DLOG(NOISE, "app_loader: PTRACE_CONT received\n");
 
-  s_message_t message {MessageType::READY, getpid()};
+  s_message_t message{MessageType::READY, getpid()};
   assert(channel_->send(message) == 0 && "Could not send the initial message.");
   DLOG(INFO, "message sent to the parent by app_loader\n");
   handle_message();
@@ -97,15 +93,13 @@ void AppLoader::init(const char *socket)
 
 void AppLoader::handle_message() const
 {
-  while (true)
-  {
+  while (true) {
     std::array<char, MESSAGE_LENGTH> message_buffer;
     ssize_t received_size = channel_->receive(message_buffer.data(), message_buffer.size());
     assert(received_size >= 0 && "Could not receive commands from the model-checker");
 
-    const s_message_t *message = (s_message_t *)message_buffer.data();
-    switch (message->type)
-    {
+    const s_message_t* message = (s_message_t*)message_buffer.data();
+    switch (message->type) {
       case MessageType::CONTINUE:
         DLOG(INFO, "app_loader: parent sent a message, pid is: %i\n", message->pid);
 
@@ -116,7 +110,7 @@ void AppLoader::handle_message() const
         break;
 
       default:
-        DLOG(ERROR, "app_loader: parent sent an invalid message, \n");  
+        DLOG(ERROR, "app_loader: parent sent an invalid message, \n");
     }
   }
 }
