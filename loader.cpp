@@ -37,10 +37,9 @@ void Loader::run(const char** argv)
   int sockets[2];
   assert((socketpair(AF_LOCAL, SOCK_SEQPACKET | SOCK_CLOEXEC, 0, sockets) != -1) && "Could not create socketpair");
 
-  unordered_set<pid_t> procs;
   pid_t pid = fork();
   assert(pid >= 0 && "Could not fork child process");
-  procs.insert(pid);
+  procs_.insert(pid);
 
   if (pid == 0) // child
   {
@@ -49,13 +48,13 @@ void Loader::run(const char** argv)
   } else // parent
   {
     ::close(sockets[0]);
-    sync_proc_ = make_unique<SyncProc>(sockets[1], std::move(procs));
+    sync_proc_ = make_unique<SyncProc>(sockets[1]);
     sync_proc_->start([](evutil_socket_t sig, short event, void* arg) {
-      auto sync_proc = (SyncProc*)arg;
+      auto loader = static_cast<Loader*>(arg);
       if (event == EV_READ) {
         // DLOG(NOISE, "parent: EV_READ received\n");
         std::array<char, MESSAGE_LENGTH> buffer;
-        ssize_t size = sync_proc->get_channel().receive(buffer.data(), buffer.size(), false);
+        ssize_t size = loader->sync_proc_->get_channel().receive(buffer.data(), buffer.size(), false);
         if (size == -1 && errno != EAGAIN) {
           DLOG(ERROR, "%s\n", strerror(errno));
           exit(-1);
@@ -75,20 +74,82 @@ void Loader::run(const char** argv)
           base_message.type = MessageType::DONE;
           // DLOG(INFO, "parent: sending a %s message to the child ...\n", "DONE");
         }
-        sync_proc->get_channel().send(base_message);
+        loader->sync_proc_->get_channel().send(base_message);
 
         // if (!sync_proc->handle_message(buffer.data(), size))
         //   sync_proc->break_loop();
       } else if (event == EV_SIGNAL) {
         if (sig == SIGCHLD) {
           // DLOG(NOISE, "parent: EV_SIGNAL received\n");
-          sync_proc->handle_waitpid();
+          loader->handle_waitpid();
         }
       } else {
         DLOG(ERROR, "Unexpected event\n");
         exit(-1);
       }
-    });
+    }, this);
+  }
+}
+
+void Loader::remove_process(pid_t pid)
+{
+  auto it = procs_.find(pid);
+  if (it != procs_.end())
+    procs_.erase(it);
+}
+
+void Loader::handle_waitpid()
+{
+  int status;
+  pid_t pid;
+  while ((pid = waitpid(-1, &status, WNOHANG)) != 0) {
+    if (pid == -1) {
+      if (errno == ECHILD) {
+        // No more children:
+        assert((procs_.size() == 0) && "Inconsistent state");
+        break;
+      } else {
+        DLOG(ERROR, "Could not wait for pid\n");
+        exit(-1);
+      }
+    }
+
+    unordered_set<pid_t>::iterator it = procs_.find(pid);
+    if (it == procs_.end()) {
+      DLOG(ERROR, "Child process not found\n");
+      return;
+    } else {
+      // From PTRACE_O_TRACEEXIT:
+#ifdef __linux__
+      if (status >> 8 == (SIGTRAP | (PTRACE_EVENT_EXIT << 8))) {
+        assert((ptrace(PTRACE_GETEVENTMSG, pid, 0, &status) != -1) && "Could not get exit status");
+        if (WIFSIGNALED(status)) {
+          DLOG(ERROR, "CRASH IN THE PROGRAM, %i\n", status);
+          for (auto process : procs_)
+            kill(process, SIGKILL);
+          exit(-1);
+        }
+      }
+#endif
+
+      // We don't care about signals, just reinject them:
+      if (WIFSTOPPED(status)) {
+        // DLOG(INFO, "Stopped with signal %i\n", (int)WSTOPSIG(status));
+        errno = 0;
+#ifdef __linux__
+        ptrace(PTRACE_CONT, pid, 0, WSTOPSIG(status));
+#endif
+        assert(errno == 0 && "Could not PTRACE_CONT");
+      } else if (WIFSIGNALED(status)) {
+        DLOG(ERROR, "CRASH IN THE PROGRAM, %i\n", status);
+        for (auto process : procs_)
+          kill(process, SIGKILL);
+        exit(-1);
+      } else if (WIFEXITED(status)) {
+        DLOG(INFO, "Child process is over\n");
+        procs_.erase(it);
+      }
+    }
   }
 }
 

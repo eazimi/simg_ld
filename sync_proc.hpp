@@ -6,6 +6,8 @@
 #include <memory>
 #include <unordered_set>
 
+class Loader;
+
 class SyncProc {
 private:
   unique_ptr<event_base, decltype(&event_base_free)> base_{nullptr, &event_base_free};
@@ -13,20 +15,17 @@ private:
   unique_ptr<event, decltype(&event_free)> signal_event_{nullptr, &event_free};
 
   Channel channel_;
-  std::unordered_set<pid_t> procs_;
 
 public:
-  explicit SyncProc(int sockfd, std::unordered_set<pid_t>&& procs) : channel_(sockfd), procs_(std::move(procs)) {}
+  explicit SyncProc(int sockfd) : channel_(sockfd) {}
   // No copy
   SyncProc(SyncProc const&) = delete;
   SyncProc& operator=(SyncProc const&) = delete;
   SyncProc& operator=(SyncProc&&) = delete;
 
-  void start(void (*handler)(int, short, void*));
+  void start(void (*handler)(int, short, void*), Loader *loader);
   void dispatch() const;
   void break_loop() const;
-  void handle_waitpid();
-  void remove_process(pid_t pid);
 
   inline const Channel& get_channel() { return channel_; }
 };

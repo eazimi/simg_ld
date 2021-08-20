@@ -22,9 +22,12 @@ private:
   void reserve_memory_region();
   void hide_free_memory_regions();
   void release_reserved_memory_region();
+  void handle_waitpid();
+  void remove_process(pid_t pid);
 
   std::unique_ptr<MemoryArea_t> g_range = nullptr;
   unique_ptr<SyncProc> sync_proc_;
+  std::unordered_set<pid_t> procs_;
 };
 
 #endif
