@@ -80,37 +80,44 @@ void AppLoader::init(const char* socket)
 
   ss << "Could not wait for the parent (errno = %d: %s)" << errno << strerror(errno);
   str = ss.str().c_str();
-  DLOG(NOISE, "app_loader: before SIGSTOP\n");
+  // DLOG(NOISE, "app_loader: before SIGSTOP\n");
   assert((errno == 0 && raise(SIGSTOP) == 0) && str); // Wait for the parent to awake me
-  DLOG(NOISE, "app_loader: PTRACE_CONT received\n");
+  // DLOG(NOISE, "app_loader: PTRACE_CONT received\n");
 
   s_message_t message{MessageType::READY, getpid()};
   assert(channel_->send(message) == 0 && "Could not send the initial message.");
-  DLOG(INFO, "message sent to the parent by app_loader\n");
+  // DLOG(INFO, "child: app_loader sent a %s message to the parent\n", "READY");
   handle_message();
   DLOG(ERROR, "never reach this line ...\n");
 }
 
 void AppLoader::handle_message() const
 {
-  while (true) {
+  vector<string> str_messages{"NONE", "READY", "CONTINUE", "FINISH", "DONE"};
+  bool loop = true;  
+  while (loop) {
     std::array<char, MESSAGE_LENGTH> message_buffer;
     ssize_t received_size = channel_->receive(message_buffer.data(), message_buffer.size());
-    assert(received_size >= 0 && "Could not receive commands from the model-checker");
+    assert(received_size >= 0 && "Could not receive commands from the parent");
 
     const s_message_t* message = (s_message_t*)message_buffer.data();
     switch (message->type) {
       case MessageType::CONTINUE:
-        DLOG(INFO, "app_loader: parent sent a message, pid is: %i\n", message->pid);
+        DLOG(INFO, "child: parent sent a %s message\n", "CONTINUE");
+        s_message_t base_message;
+        base_message.type = MessageType::FINISH;
+        base_message.pid  = getpid();
+        channel_->send(base_message);
+        break;
 
-        // s_message_t base_message;
-        // base_message.type = MessageType::READY;
-        // base_message.pid = getpid();
-        // channel_->send(base_message);
+      case MessageType::DONE:
+        DLOG(INFO, "child: parent sent a %s message\n", "DONE");
+        // loop = false;
         break;
 
       default:
-        DLOG(ERROR, "app_loader: parent sent an invalid message, \n");
+        DLOG(ERROR, "child: parent sent an invalid message, \n");
     }
   }
+  // raise(SIGINT);
 }

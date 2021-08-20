@@ -53,7 +53,7 @@ void Loader::run(const char** argv)
     sync_proc_->start([](evutil_socket_t sig, short event, void* arg) {
       auto sync_proc = (SyncProc*)arg;
       if (event == EV_READ) {
-        DLOG(NOISE, "parent: EV_READ received\n");
+        // DLOG(NOISE, "parent: EV_READ received\n");
         std::array<char, MESSAGE_LENGTH> buffer;
         ssize_t size = sync_proc->get_channel().receive(buffer.data(), buffer.size(), false);
         if (size == -1 && errno != EAGAIN) {
@@ -61,21 +61,29 @@ void Loader::run(const char** argv)
           exit(-1);
         }
 
+        vector<string> str_messages{"NONE", "READY", "CONTINUE", "FINISH", "DONE"};
         s_message_t base_message;
         memcpy(&base_message, buffer.data(), sizeof(base_message));
-        DLOG(INFO, "parent: child sent a message, pid is %i\n", base_message.pid);
+        auto str_message_type = str_messages[static_cast<int>(base_message.type)];
+        DLOG(INFO, "parent: child sent a %s message\n", str_message_type.c_str());
 
         base_message.pid  = getpid();
-        base_message.type = MessageType::CONTINUE;
-        DLOG(INFO, "parent: sending a message to the child ...\n");
+        if (base_message.type == MessageType::READY) {
+          base_message.type = MessageType::CONTINUE;
+          // DLOG(INFO, "parent: sending a %s message to the child ...\n", "CONTINUE");
+        } else if(base_message.type == MessageType::FINISH) {
+          base_message.type = MessageType::DONE;
+          // DLOG(INFO, "parent: sending a %s message to the child ...\n", "DONE");
+        }
         sync_proc->get_channel().send(base_message);
 
         // if (!sync_proc->handle_message(buffer.data(), size))
         //   sync_proc->break_loop();
       } else if (event == EV_SIGNAL) {
-        DLOG(NOISE, "parent: EV_SIGNAL received\n");
-        if (sig == SIGCHLD)
+        if (sig == SIGCHLD) {
+          // DLOG(NOISE, "parent: EV_SIGNAL received\n");
           sync_proc->handle_waitpid();
+        }
       } else {
         DLOG(ERROR, "Unexpected event\n");
         exit(-1);

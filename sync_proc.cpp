@@ -70,7 +70,7 @@ void SyncProc::handle_waitpid()
 
       // We don't care about signals, just reinject them:
       if (WIFSTOPPED(status)) {
-        DLOG(INFO, "Stopped with signal %i\n", (int)WSTOPSIG(status));
+        // DLOG(INFO, "Stopped with signal %i\n", (int)WSTOPSIG(status));
         errno = 0;
 #ifdef __linux__
         ptrace(PTRACE_CONT, pid, 0, WSTOPSIG(status));
