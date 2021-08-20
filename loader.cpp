@@ -30,9 +30,7 @@ void Loader::run(const char** argv)
   pause_run(ss.str());
 
   char* ldname = (char*)LD_NAME;
-
-  // 0: ldname, 1: param_index, 2: pair->param_count
-  args_ = make_tuple((char*)LD_NAME, param_index, param_count);
+  args->set_args((char*)LD_NAME, param_index, {get<0>(param_count), get<1>(param_count)});
 
   // Create an AF_LOCAL socketpair used for exchanging messages
   // between the model-checker process (ourselves) and the model-checked
@@ -82,7 +80,7 @@ void Loader::run(const char** argv)
             }
             loader->sync_proc_->get_channel().send(base_message);
             if (run_app) { // 0: ldname, 1: param_index, 2: param_count
-              loader->run_rtld(get<0>(loader->args_), get<1>(loader->args_), get<2>(loader->args_).second);
+              loader->run_rtld(loader->args->ld_name(), loader->args->param_index(), loader->args->param_count(1));
             } 
             // if (!sync_proc->handle_message(buffer.data(), size))
             //   sync_proc->break_loop();

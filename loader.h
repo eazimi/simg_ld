@@ -7,9 +7,9 @@ using namespace std;
 
 class Loader {
 public:
-  explicit Loader() { g_range_ = std::make_unique<MemoryArea_t>(); }
+  explicit Loader() { g_range_ = std::make_unique<MemoryArea_t>(); args = make_unique<CMD_Args>(); }
   void run(const char** argv);
-  tuple<char*, int, pair<int, int>> args_; 
+  unique_ptr<CMD_Args> args; 
 
 private:
   int init(const char** argv, pair<int, int>& param_count);
