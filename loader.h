@@ -7,8 +7,9 @@ using namespace std;
 
 class Loader {
 public:
-  explicit Loader() { g_range = std::make_unique<MemoryArea_t>(); }
+  explicit Loader() { g_range_ = std::make_unique<MemoryArea_t>(); }
   void run(const char** argv);
+  tuple<char*, int, pair<int, int>> args_; 
 
 private:
   int init(const char** argv, pair<int, int>& param_count);
@@ -25,7 +26,7 @@ private:
   void handle_waitpid();
   void remove_process(pid_t pid);
 
-  std::unique_ptr<MemoryArea_t> g_range = nullptr;
+  std::unique_ptr<MemoryArea_t> g_range_ = nullptr;
   unique_ptr<SyncProc> sync_proc_;
   std::unordered_set<pid_t> procs_;
 };

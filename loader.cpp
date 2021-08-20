@@ -31,6 +31,9 @@ void Loader::run(const char** argv)
 
   char* ldname = (char*)LD_NAME;
 
+  // 0: ldname, 1: param_index, 2: pair->param_count
+  args_ = make_tuple((char*)LD_NAME, param_index, param_count);
+
   // Create an AF_LOCAL socketpair used for exchanging messages
   // between the model-checker process (ourselves) and the model-checked
   // process:
@@ -49,45 +52,51 @@ void Loader::run(const char** argv)
   {
     ::close(sockets[0]);
     sync_proc_ = make_unique<SyncProc>(sockets[1]);
-    sync_proc_->start([](evutil_socket_t sig, short event, void* arg) {
-      auto loader = static_cast<Loader*>(arg);
-      if (event == EV_READ) {
-        // DLOG(NOISE, "parent: EV_READ received\n");
-        std::array<char, MESSAGE_LENGTH> buffer;
-        ssize_t size = loader->sync_proc_->get_channel().receive(buffer.data(), buffer.size(), false);
-        if (size == -1 && errno != EAGAIN) {
-          DLOG(ERROR, "%s\n", strerror(errno));
-          exit(-1);
-        }
+    sync_proc_->start(
+        [](evutil_socket_t sig, short event, void* arg) {
+          auto loader = static_cast<Loader*>(arg);
+          if (event == EV_READ) {
+            // DLOG(NOISE, "parent: EV_READ received\n");
+            std::array<char, MESSAGE_LENGTH> buffer;
+            ssize_t size = loader->sync_proc_->get_channel().receive(buffer.data(), buffer.size(), false);
+            if (size == -1 && errno != EAGAIN) {
+              DLOG(ERROR, "%s\n", strerror(errno));
+              exit(-1);
+            }
 
-        vector<string> str_messages{"NONE", "READY", "CONTINUE", "FINISH", "DONE"};
-        s_message_t base_message;
-        memcpy(&base_message, buffer.data(), sizeof(base_message));
-        auto str_message_type = str_messages[static_cast<int>(base_message.type)];
-        DLOG(INFO, "parent: child sent a %s message\n", str_message_type.c_str());
+            vector<string> str_messages{"NONE", "READY", "CONTINUE", "FINISH", "DONE"};
+            s_message_t base_message;
+            memcpy(&base_message, buffer.data(), sizeof(base_message));
+            auto str_message_type = str_messages[static_cast<int>(base_message.type)];
+            DLOG(INFO, "parent: child sent a %s message\n", str_message_type.c_str());
 
-        base_message.pid  = getpid();
-        if (base_message.type == MessageType::READY) {
-          base_message.type = MessageType::CONTINUE;
-          // DLOG(INFO, "parent: sending a %s message to the child ...\n", "CONTINUE");
-        } else if(base_message.type == MessageType::FINISH) {
-          base_message.type = MessageType::DONE;
-          // DLOG(INFO, "parent: sending a %s message to the child ...\n", "DONE");
-        }
-        loader->sync_proc_->get_channel().send(base_message);
-
-        // if (!sync_proc->handle_message(buffer.data(), size))
-        //   sync_proc->break_loop();
-      } else if (event == EV_SIGNAL) {
-        if (sig == SIGCHLD) {
-          // DLOG(NOISE, "parent: EV_SIGNAL received\n");
-          loader->handle_waitpid();
-        }
-      } else {
-        DLOG(ERROR, "Unexpected event\n");
-        exit(-1);
-      }
-    }, this);
+            base_message.pid = getpid();
+            bool run_app     = false;
+            if (base_message.type == MessageType::READY) {
+              base_message.type = MessageType::CONTINUE;
+              // DLOG(INFO, "parent: sending a %s message to the child ...\n", "CONTINUE");
+            } else if (base_message.type == MessageType::FINISH) {
+              base_message.type = MessageType::DONE;
+              run_app           = true;
+              // DLOG(INFO, "parent: sending a %s message to the child ...\n", "DONE");
+            }
+            loader->sync_proc_->get_channel().send(base_message);
+            if (run_app) { // 0: ldname, 1: param_index, 2: param_count
+              loader->run_rtld(get<0>(loader->args_), get<1>(loader->args_), get<2>(loader->args_).second);
+            } 
+            // if (!sync_proc->handle_message(buffer.data(), size))
+            //   sync_proc->break_loop();
+          } else if (event == EV_SIGNAL) {
+            if (sig == SIGCHLD) {
+              // DLOG(NOISE, "parent: EV_SIGNAL received\n");
+              loader->handle_waitpid();
+            }
+          } else {
+            DLOG(ERROR, "Unexpected event\n");
+            exit(-1);
+          }
+        },
+        this);
   }
 }
 
@@ -209,7 +218,7 @@ void* Loader::create_new_heap_for_ldso()
   // We go through the mmap wrapper function to ensure that this gets added
   // to the list of upper half regions to be checkpointed.
 
-  void* startAddr = (void*)((unsigned long)g_range->start + _1500_MB);
+  void* startAddr = (void*)((unsigned long)g_range_->start + _1500_MB);
 
   void* addr = mmapWrapper(startAddr /*0*/, heapSize, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
 
@@ -237,7 +246,7 @@ void* Loader::create_new_stack_for_ldso(const DynObjInfo& info, int param_index,
   // We go through the mmap wrapper function to ensure that this gets added
   // to the list of upper half regions to be checkpointed.
 
-  void* startAddr = (void*)((unsigned long)g_range->start + _1_GB);
+  void* startAddr = (void*)((unsigned long)g_range_->start + _1_GB);
 
   void* newStack =
       mmapWrapper(startAddr, stack.size, PROT_READ | PROT_WRITE, MAP_GROWSDOWN | MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
@@ -298,7 +307,7 @@ DynObjInfo Loader::load_lsdo(const char* ld_name)
 
 void Loader::release_reserved_memory_region()
 {
-  munmap(g_range->start, (unsigned long)g_range->end - (unsigned long)g_range->start);
+  munmap(g_range_->start, (unsigned long)g_range_->end - (unsigned long)g_range_->start);
 }
 
 void Loader::hide_free_memory_regions()
@@ -354,13 +363,13 @@ void Loader::reserve_memory_region()
   close(mapsfd);
 
   if (found) {
-    g_range->start = (VA)area.addr - _3_GB;
-    g_range->end   = (VA)area.addr - _1_GB;
+    g_range_->start = (VA)area.addr - _3_GB;
+    g_range_->end   = (VA)area.addr - _1_GB;
   }
   // std::cout << "setReservedMemRange(): start = " << std::hex << g_range->start << " , end = " << g_range->end <<
   // std::endl;
 
-  void* region = mmapWrapper(g_range->start, (unsigned long)g_range->end - (unsigned long)g_range->start,
+  void* region = mmapWrapper(g_range_->start, (unsigned long)g_range_->end - (unsigned long)g_range_->start,
                              PROT_READ | PROT_WRITE, MAP_GROWSDOWN | MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
   if (region == MAP_FAILED) {
     DLOG(ERROR, "Failed to mmap region: %s\n", strerror(errno));
@@ -437,7 +446,7 @@ unsigned long Loader::map_elf_interpreter_load_segment(int fd, Elf64_Ehdr* ehdr,
 
   /* Check that we can hold the whole image. */
   // base = (unsigned char*) mmap(hint, maxva - minva, PROT_NONE, flags, -1, 0);
-  base = (unsigned char*)mmap(g_range->start, maxva - minva, PROT_NONE, flags, -1, 0);
+  base = (unsigned char*)mmap(g_range_->start, maxva - minva, PROT_NONE, flags, -1, 0);
   if (base == (void*)-1)
     return -1;
   munmap(base, maxva - minva);
