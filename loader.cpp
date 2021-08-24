@@ -42,6 +42,10 @@ void Loader::run(const char** argv)
   assert(pid >= 0 && "Could not fork child process");
   procs_.insert(pid);
 
+  pid = fork();
+  assert(pid >= 0 && "Could not fork child process");
+  procs_.insert(pid);
+
   if (pid == 0) // child
   {
     ::close(sockets[1]);
@@ -66,7 +70,7 @@ void Loader::run(const char** argv)
             s_message_t base_message;
             memcpy(&base_message, buffer.data(), sizeof(base_message));
             auto str_message_type = str_messages[static_cast<int>(base_message.type)];
-            DLOG(INFO, "parent: child sent a %s message\n", str_message_type.c_str());
+            DLOG(INFO, "parent: child %i sent a %s message\n", base_message.pid, str_message_type.c_str());
 
             base_message.pid = getpid();
             bool run_app     = false;

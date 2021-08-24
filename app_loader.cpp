@@ -103,7 +103,7 @@ void AppLoader::handle_message() const
     const s_message_t* message = (s_message_t*)message_buffer.data();
     switch (message->type) {
       case MessageType::CONTINUE:
-        DLOG(INFO, "child: parent sent a %s message\n", "CONTINUE");
+        DLOG(INFO, "child %i: parent sent a %s message\n", getpid(), "CONTINUE");
         s_message_t base_message;
         base_message.type = MessageType::FINISH;
         base_message.pid  = getpid();
@@ -111,12 +111,12 @@ void AppLoader::handle_message() const
         break;
 
       case MessageType::DONE:
-        DLOG(INFO, "child: parent sent a %s message\n", "DONE");
+        DLOG(INFO, "child %i: parent sent a %s message\n", getpid(), "DONE");
         // loop = false;
         break;
 
       default:
-        DLOG(ERROR, "child: parent sent an invalid message, \n");
+        DLOG(ERROR, "child %i: parent sent an invalid message, \n", getpid());
     }
   }
   // raise(SIGINT);
