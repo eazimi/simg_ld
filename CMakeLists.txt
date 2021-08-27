@@ -30,5 +30,7 @@ add_executable(simg_ld
     sync_proc.cpp
     loader_headers.hpp
     cmd_args.hpp
+    multi_conn.h
+    multi_conn.cpp
     )
 target_link_libraries(simg_ld ${CMAKE_SOURCE_DIR}/libevent_core.a -static)
