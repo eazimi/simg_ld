@@ -28,6 +28,8 @@ add_executable(simg_ld
     loader_global_funcs.hpp
     sync_proc.hpp
     sync_proc.cpp
+    sync_proc_multi.h
+    sync_proc_multi.cpp
     loader_headers.hpp
     cmd_args.hpp
     )
