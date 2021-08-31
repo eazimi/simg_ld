@@ -53,41 +53,12 @@ void Loader::run(const char** argv)
   } else // parent
   {
     ::close(sockets[0]);
-    sync_proc_ = make_unique<SyncProc>(sockets[1]);
+    sync_proc_ = make_unique<SyncProcMulti>();
     sync_proc_->start(
         [](evutil_socket_t sig, short event, void* arg) {
           auto loader = static_cast<Loader*>(arg);
           if (event == EV_READ) {
-            // DLOG(NOISE, "parent: EV_READ received\n");
-            std::array<char, MESSAGE_LENGTH> buffer;
-            ssize_t size = loader->sync_proc_->get_channel().receive(buffer.data(), buffer.size(), false);
-            if (size == -1 && errno != EAGAIN) {
-              DLOG(ERROR, "%s\n", strerror(errno));
-              exit(-1);
-            }
-
-            vector<string> str_messages{"NONE", "READY", "CONTINUE", "FINISH", "DONE"};
-            s_message_t base_message;
-            memcpy(&base_message, buffer.data(), sizeof(base_message));
-            auto str_message_type = str_messages[static_cast<int>(base_message.type)];
-            DLOG(INFO, "parent: child %i sent a %s message\n", base_message.pid, str_message_type.c_str());
-
-            base_message.pid = getpid();
-            bool run_app     = false;
-            if (base_message.type == MessageType::READY) {
-              base_message.type = MessageType::CONTINUE;
-              // DLOG(INFO, "parent: sending a %s message to the child ...\n", "CONTINUE");
-            } else if (base_message.type == MessageType::FINISH) {
-              base_message.type = MessageType::DONE;
-              run_app           = true;
-              // DLOG(INFO, "parent: sending a %s message to the child ...\n", "DONE");
-            }
-            loader->sync_proc_->get_channel().send(base_message);
-            if (run_app) { // 0: ldname, 1: param_index, 2: param_count
-              loader->run_rtld(loader->args->ld_name(), loader->args->param_index(), loader->args->param_count(1));
-            } 
-            // if (!sync_proc->handle_message(buffer.data(), size))
-            //   sync_proc->break_loop();
+            DLOG(NOISE, "parent: EV_READ received\n");            
           } else if (event == EV_SIGNAL) {
             if (sig == SIGCHLD) {
               // DLOG(NOISE, "parent: EV_SIGNAL received\n");
@@ -149,6 +120,7 @@ void Loader::handle_waitpid()
         errno = 0;
 #ifdef __linux__
         ptrace(PTRACE_CONT, pid, 0, WSTOPSIG(status));
+        // DLOG(INFO, "PTRACE_CONT sent\n");
 #endif
         assert(errno == 0 && "Could not PTRACE_CONT");
       } else if (WIFSIGNALED(status)) {

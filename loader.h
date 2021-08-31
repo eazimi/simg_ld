@@ -27,7 +27,7 @@ private:
   void remove_process(pid_t pid);
 
   std::unique_ptr<MemoryArea_t> g_range_ = nullptr;
-  unique_ptr<SyncProc> sync_proc_;
+  unique_ptr<SyncProcMulti> sync_proc_;
   std::unordered_set<pid_t> procs_;
 };
 
