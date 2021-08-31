@@ -53,6 +53,14 @@ static const char* colors[] = {KNRM, KRED, KBLU, KGRN, KYEL};
     fprintf(stderr, "%s[%s +%d]: " fmt KNRM, colors[LOG_LEVEL], __FILE__, __LINE__ __VA_OPT__(, ) __VA_ARGS__);        \
   } while (0)
 
+#define ASSERTNOERRL(x, l) { \
+  if (x < 0) { \
+    DLOG(ERROR, "Assertion failure on line %d. Error: %s", l, strerror(errno)); \
+    exit(1); \
+  } \
+}
+#define ASSERTNOERR(x) ASSERTNOERRL(x, __LINE__)  
+
 // FIXME: 0x1000 is one page; Use sysconf(PAGESIZE) instead.
 #define ROUND_DOWN(x) ((unsigned long long)(x) & ~(unsigned long long)(PAGE_SIZE - 1))
 #define ROUND_UP(x) (((unsigned long long)(x) + PAGE_SIZE - 1) & ~(PAGE_SIZE - 1))
