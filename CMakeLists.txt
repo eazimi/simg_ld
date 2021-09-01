@@ -15,7 +15,11 @@ add_executable(app_loader
     app_loader.cpp
     global.hpp
     channel.hpp
-    channel.cpp)
+    channel.cpp
+    sync_proc_client.h
+    sync_proc_client.cpp
+    )
+target_link_libraries(app_loader ${CMAKE_SOURCE_DIR}/libevent_core.a -static)    
 
 add_executable(simg_ld 
     simg_ld_main.cpp
