@@ -32,11 +32,10 @@ void Loader::run(const char** argv)
   char* ldname = (char*)LD_NAME;
   args->set_args((char*)LD_NAME, param_index, {get<0>(param_count), get<1>(param_count)});
 
-  // Create an AF_LOCAL socketpair used for exchanging messages
-  // between the model-checker process (ourselves) and the model-checked
-  // process:
-  int sockets[2];
-  assert((socketpair(AF_LOCAL, SOCK_SEQPACKET | SOCK_CLOEXEC, 0, sockets) != -1) && "Could not create socketpair");
+  // SOCK_CLOEXEC
+  // int fdflags = fcntl(socket, F_GETFD, 0);
+  // assert((fdflags != -1 && fcntl(socket, F_SETFD, fdflags & ~FD_CLOEXEC) != -1) &&
+  //        "Could not remove CLOEXEC for socket");
 
   pid_t pid = fork();
   assert(pid >= 0 && "Could not fork child process");
@@ -48,46 +47,44 @@ void Loader::run(const char** argv)
 
   if (pid == 0) // child
   {
-    ::close(sockets[1]);
-    run_child_process(sockets[0], [&]() { run_rtld(ldname, 0, param_count.first, sockets[0]); });
+    run_child_process([&]() { run_rtld(ldname, 0, param_count.first); });
   } else // parent
   {
-    ::close(sockets[0]);
-    sync_proc_ = make_unique<SyncProc>(sockets[1]);
+    sync_proc_ = make_unique<SyncProc>();
     sync_proc_->start(
         [](evutil_socket_t sig, short event, void* arg) {
           auto loader = static_cast<Loader*>(arg);
           if (event == EV_READ) {
-            // DLOG(NOISE, "parent: EV_READ received\n");
-            std::array<char, MESSAGE_LENGTH> buffer;
-            ssize_t size = loader->sync_proc_->get_channel().receive(buffer.data(), buffer.size(), false);
-            if (size == -1 && errno != EAGAIN) {
-              DLOG(ERROR, "%s\n", strerror(errno));
-              exit(-1);
-            }
+            // // DLOG(NOISE, "parent: EV_READ received\n");
+            // std::array<char, MESSAGE_LENGTH> buffer;
+            // ssize_t size = loader->sync_proc_->get_channel().receive(buffer.data(), buffer.size(), false);
+            // if (size == -1 && errno != EAGAIN) {
+            //   DLOG(ERROR, "%s\n", strerror(errno));
+            //   exit(-1);
+            // }
 
-            vector<string> str_messages{"NONE", "READY", "CONTINUE", "FINISH", "DONE"};
-            s_message_t base_message;
-            memcpy(&base_message, buffer.data(), sizeof(base_message));
-            auto str_message_type = str_messages[static_cast<int>(base_message.type)];
-            DLOG(INFO, "parent: child %i sent a %s message\n", base_message.pid, str_message_type.c_str());
+            // vector<string> str_messages{"NONE", "READY", "CONTINUE", "FINISH", "DONE"};
+            // s_message_t base_message;
+            // memcpy(&base_message, buffer.data(), sizeof(base_message));
+            // auto str_message_type = str_messages[static_cast<int>(base_message.type)];
+            // DLOG(INFO, "parent: child %i sent a %s message\n", base_message.pid, str_message_type.c_str());
 
-            base_message.pid = getpid();
-            bool run_app     = false;
-            if (base_message.type == MessageType::READY) {
-              base_message.type = MessageType::CONTINUE;
-              // DLOG(INFO, "parent: sending a %s message to the child ...\n", "CONTINUE");
-            } else if (base_message.type == MessageType::FINISH) {
-              base_message.type = MessageType::DONE;
-              run_app           = true;
-              // DLOG(INFO, "parent: sending a %s message to the child ...\n", "DONE");
-            }
-            loader->sync_proc_->get_channel().send(base_message);
-            if (run_app) { // 0: ldname, 1: param_index, 2: param_count
-              loader->run_rtld(loader->args->ld_name(), loader->args->param_index(), loader->args->param_count(1));
-            } 
-            // if (!sync_proc->handle_message(buffer.data(), size))
-            //   sync_proc->break_loop();
+            // base_message.pid = getpid();
+            // bool run_app     = false;
+            // if (base_message.type == MessageType::READY) {
+            //   base_message.type = MessageType::CONTINUE;
+            //   // DLOG(INFO, "parent: sending a %s message to the child ...\n", "CONTINUE");
+            // } else if (base_message.type == MessageType::FINISH) {
+            //   base_message.type = MessageType::DONE;
+            //   run_app           = true;
+            //   // DLOG(INFO, "parent: sending a %s message to the child ...\n", "DONE");
+            // }
+            // loader->sync_proc_->get_channel().send(base_message);
+            // if (run_app) { // 0: ldname, 1: param_index, 2: param_count
+            //   loader->run_rtld(loader->args->ld_name(), loader->args->param_index(), loader->args->param_count(1));
+            // } 
+            // // if (!sync_proc->handle_message(buffer.data(), size))
+            // //   sync_proc->break_loop();
           } else if (event == EV_SIGNAL) {
             if (sig == SIGCHLD) {
               // DLOG(NOISE, "parent: EV_SIGNAL received\n");
@@ -166,7 +163,7 @@ void Loader::handle_waitpid()
 
 // This function loads in ld.so, sets up a separate stack for it, and jumps
 // to the entry point of ld.so
-void Loader::run_rtld(const char* ldname, int param_index, int param_count, int socket_id)
+void Loader::run_rtld(const char* ldname, int param_index, int param_count)
 {
   int rc = -1;
 
@@ -179,7 +176,7 @@ void Loader::run_rtld(const char* ldname, int param_index, int param_count, int 
   }
 
   // Create new stack region to be used by RTLD
-  void* newStack = create_new_stack_for_ldso(ldso, param_index, param_count, socket_id);
+  void* newStack = create_new_stack_for_ldso(ldso, param_index, param_count);
   if (!newStack) {
     DLOG(ERROR, "Error creating new stack for RTLD. Exiting...\n");
     exit(-1);
@@ -238,7 +235,7 @@ void* Loader::create_new_heap_for_ldso()
 //  1. Creates a new stack region to be used for initialization of RTLD (ld.so)
 //  2. Deep copies the original stack (from the kernel) in the new stack region
 //  3. Returns a pointer to the beginning of stack in the new stack region
-void* Loader::create_new_stack_for_ldso(const DynObjInfo& info, int param_index, int param_count, int socket_id)
+void* Loader::create_new_stack_for_ldso(const DynObjInfo& info, int param_index, int param_count)
 {
   Area stack;
   char stackEndStr[20] = {0};
@@ -291,7 +288,7 @@ void* Loader::create_new_stack_for_ldso(const DynObjInfo& info, int param_index,
 
   // 2. Deep copy stack
   newStackEnd = deepCopyStack(newStack, stack.addr, stack.size, (void*)newStackEnd, (void*)origStackEnd, info,
-                              param_index, param_count, socket_id);
+                              param_index, param_count);
 
   return newStackEnd;
 }

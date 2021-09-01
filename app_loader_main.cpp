@@ -9,7 +9,7 @@ int main(int argc, char** argv, char** env)
 {
   // cout << "in app_loader main()" << endl;
   // cout << "argc: " << argc << " # argv[0]: " << argv[0] << " # argv[argc-1]: " << argv[argc-1] << endl;
-  unique_ptr<AppLoader> appLoader(new AppLoader(argv[argc - 1]));
+  unique_ptr<AppLoader> appLoader(new AppLoader());
   // std::cout << "[CHILD], memory layout BEFORE unmmap ..." << std::endl;
   // print_mmapped_ranges();
   // do munmap

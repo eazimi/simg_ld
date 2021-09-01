@@ -10,10 +10,10 @@
 
 using namespace std;
 
-AppLoader::AppLoader(const char* socket)
+AppLoader::AppLoader()
 {
   reserved_area = std::make_unique<MemoryArea_t>();
-  init(socket);
+  init();
 }
 
 void AppLoader::release_parent_memory_region()
@@ -54,20 +54,8 @@ void AppLoader::get_reserved_memory_region(std::pair<void*, void*>& range)
   }
 }
 
-void AppLoader::init(const char* socket)
+void AppLoader::init()
 {
-  int fd   = str_parse_int(socket, "Socket id is not in a numeric format");
-  channel_ = make_unique<Channel>(fd);
-
-  // Check the socket type/validity:
-  int type;
-  socklen_t socklen = sizeof(type);
-  assert((getsockopt(fd, SOL_SOCKET, SO_TYPE, &type, &socklen) == 0) && "Could not check socket type");
-  stringstream ss;
-  ss << "Unexpected socket type " << type;
-  auto str = ss.str().c_str();
-  assert((type == SOCK_SEQPACKET) && str);
-
   // Wait for the parent:
   errno = 0;
 #if defined __linux__
@@ -78,15 +66,12 @@ void AppLoader::init(const char* socket)
 #error "no ptrace equivalent coded for this platform"
 #endif
 
+  stringstream ss;
   ss << "Could not wait for the parent (errno = %d: %s)" << errno << strerror(errno);
-  str = ss.str().c_str();
-  // DLOG(NOISE, "app_loader: before SIGSTOP\n");
-  assert((errno == 0 && raise(SIGSTOP) == 0) && str); // Wait for the parent to awake me
-  // DLOG(NOISE, "app_loader: PTRACE_CONT received\n");
+  DLOG(NOISE, "app_loader: before SIGSTOP\n");
+  assert((errno == 0 && raise(SIGSTOP) == 0) && ss.str().c_str()); // Wait for the parent to awake me
+  DLOG(NOISE, "app_loader: PTRACE_CONT received\n");
 
-  s_message_t message{MessageType::READY, getpid()};
-  assert(channel_->send(message) == 0 && "Could not send the initial message.");
-  // DLOG(INFO, "child: app_loader sent a %s message to the parent\n", "READY");
   handle_message();
   DLOG(ERROR, "never reach this line ...\n");
 }
@@ -96,28 +81,28 @@ void AppLoader::handle_message() const
   vector<string> str_messages{"NONE", "READY", "CONTINUE", "FINISH", "DONE"};
   bool loop = true;  
   while (loop) {
-    std::array<char, MESSAGE_LENGTH> message_buffer;
-    ssize_t received_size = channel_->receive(message_buffer.data(), message_buffer.size());
-    assert(received_size >= 0 && "Could not receive commands from the parent");
+    // std::array<char, MESSAGE_LENGTH> message_buffer;
+    // ssize_t received_size = channel_->receive(message_buffer.data(), message_buffer.size());
+    // assert(received_size >= 0 && "Could not receive commands from the parent");
 
-    const s_message_t* message = (s_message_t*)message_buffer.data();
-    switch (message->type) {
-      case MessageType::CONTINUE:
-        DLOG(INFO, "child %i: parent sent a %s message\n", getpid(), "CONTINUE");
-        s_message_t base_message;
-        base_message.type = MessageType::FINISH;
-        base_message.pid  = getpid();
-        channel_->send(base_message);
-        break;
+    // const s_message_t* message = (s_message_t*)message_buffer.data();
+    // switch (message->type) {
+    //   case MessageType::CONTINUE:
+    //     DLOG(INFO, "child %i: parent sent a %s message\n", getpid(), "CONTINUE");
+    //     s_message_t base_message;
+    //     base_message.type = MessageType::FINISH;
+    //     base_message.pid  = getpid();
+    //     channel_->send(base_message);
+    //     break;
 
-      case MessageType::DONE:
-        DLOG(INFO, "child %i: parent sent a %s message\n", getpid(), "DONE");
-        // loop = false;
-        break;
+    //   case MessageType::DONE:
+    //     DLOG(INFO, "child %i: parent sent a %s message\n", getpid(), "DONE");
+    //     // loop = false;
+    //     break;
 
-      default:
-        DLOG(ERROR, "child %i: parent sent an invalid message, \n", getpid());
-    }
+    //   default:
+    //     DLOG(ERROR, "child %i: parent sent an invalid message, \n", getpid());
+    // }
   }
   // raise(SIGINT);
 }

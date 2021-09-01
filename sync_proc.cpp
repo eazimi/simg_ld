@@ -12,9 +12,9 @@ void SyncProc::start(void (*handler)(int, short, void*), Loader *loader)
   auto* base = event_base_new();
   base_.reset(base);
 
-  auto* socket_event = event_new(base, get_channel().get_socket(), EV_READ | EV_PERSIST, handler, loader);
-  event_add(socket_event, nullptr);
-  socket_event_.reset(socket_event);
+  // auto* socket_event = event_new(base, get_channel().get_socket(), EV_READ | EV_PERSIST, handler, loader);
+  // event_add(socket_event, nullptr);
+  // socket_event_.reset(socket_event);
 
   auto* signal_event = event_new(base, SIGCHLD, EV_SIGNAL | EV_PERSIST, handler, loader);
   event_add(signal_event, nullptr);
@@ -30,6 +30,6 @@ void SyncProc::dispatch() const
 
 void SyncProc::break_loop() const
 {
-  DLOG(INFO, "SyncProc: break_loop called\n");
+  // DLOG(INFO, "SyncProc: break_loop called\n");
   event_base_loopbreak(base_.get());
 }
