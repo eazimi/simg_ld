@@ -12,6 +12,8 @@ enum class MessageType { NONE, READY, CONTINUE, FINISH, DONE };
 struct s_message_t {
   MessageType type;
   pid_t pid;
+  std::uint64_t start_addr;
+  std::uint64_t end_addr;
 };
 
 class Channel {
