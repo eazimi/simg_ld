@@ -80,9 +80,18 @@ void AppLoader::init(const char* socket)
 
   ss << "Could not wait for the parent (errno = %d: %s)" << errno << strerror(errno);
   str = ss.str().c_str();
-  // DLOG(NOISE, "app_loader: before SIGSTOP\n");
+
+  std::cout << "[CHILD], memory layout BEFORE unmmap ..." << std::endl;
+  print_mmapped_ranges();
+
+  DLOG(NOISE, "app_loader: before SIGSTOP\n");
   assert((errno == 0 && raise(SIGSTOP) == 0) && str); // Wait for the parent to awake me
-  // DLOG(NOISE, "app_loader: PTRACE_CONT received\n");
+  DLOG(NOISE, "app_loader: PTRACE_CONT received\n");
+
+  // do munmap
+  std::cout << "[CHILD], memory layout AFTER unmmap ..." << std::endl;
+  release_parent_memory_region();
+  print_mmapped_ranges();
 
   s_message_t message{MessageType::READY, getpid()};
   assert(channel_->send(message) == 0 && "Could not send the initial message.");
