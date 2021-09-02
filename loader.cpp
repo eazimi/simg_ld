@@ -61,29 +61,7 @@ void Loader::run(const char** argv)
               DLOG(ERROR, "%s\n", strerror(errno));
               exit(-1);
             }
-
-            vector<string> str_messages{"NONE", "READY", "CONTINUE", "FINISH", "DONE"};
-            s_message_t base_message;
-            memcpy(&base_message, buffer.data(), sizeof(base_message));
-            auto str_message_type = str_messages[static_cast<int>(base_message.type)];
-            DLOG(INFO, "parent: child sent a %s message\n", str_message_type.c_str());
-
-            base_message.pid = getpid();
-            bool run_app     = false;
-            if (base_message.type == MessageType::READY) {
-              base_message.type = MessageType::CONTINUE;
-              // DLOG(INFO, "parent: sending a %s message to the child ...\n", "CONTINUE");
-            } else if (base_message.type == MessageType::FINISH) {
-              base_message.type = MessageType::DONE;
-              run_app           = true;
-              // DLOG(INFO, "parent: sending a %s message to the child ...\n", "DONE");
-            }
-            loader->sync_proc_->get_channel().send(base_message);
-            if (run_app) { // 0: ldname, 1: param_index, 2: param_count
-              loader->run_rtld(loader->args->ld_name(), loader->args->param_index(), loader->args->param_count(1));
-            } 
-            // if (!sync_proc->handle_message(buffer.data(), size))
-            //   sync_proc->break_loop();
+            loader->handle_message(buffer.data());
           } else if (event == EV_SIGNAL) {
             if (sig == SIGCHLD) {
               // DLOG(NOISE, "parent: EV_SIGNAL received\n");
@@ -103,6 +81,32 @@ void Loader::remove_process(pid_t pid)
   auto it = procs_.find(pid);
   if (it != procs_.end())
     procs_.erase(it);
+}
+
+void Loader::handle_message(void* buffer)
+{
+  vector<string> str_messages{"NONE", "READY", "CONTINUE", "FINISH", "DONE"};
+  s_message_t base_message;
+  memcpy(&base_message, static_cast<char*>(buffer), sizeof(base_message));
+  auto str_message_type = str_messages[static_cast<int>(base_message.type)];
+  DLOG(INFO, "parent: child sent a %s message\n", str_message_type.c_str());
+
+  base_message.pid = getpid();
+  bool run_app     = false;
+  if (base_message.type == MessageType::READY) {
+    base_message.type = MessageType::CONTINUE;
+    // DLOG(INFO, "parent: sending a %s message to the child ...\n", "CONTINUE");
+  } else if (base_message.type == MessageType::FINISH) {
+    base_message.type = MessageType::DONE;
+    run_app           = true;
+    // DLOG(INFO, "parent: sending a %s message to the child ...\n", "DONE");
+  }
+  sync_proc_->get_channel().send(base_message);
+  if (run_app) { // 0: ldname, 1: param_index, 2: param_count
+    run_rtld(args->ld_name(), args->param_index(), args->param_count(1));
+  }
+  // if (!sync_proc->handle_message(buffer.data(), size))
+  //   sync_proc->break_loop();
 }
 
 void Loader::handle_waitpid()
