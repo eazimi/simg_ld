@@ -1,4 +1,4 @@
-#include "sync_proc.hpp"
+#include "sock_server.h"
 
 #include "global.hpp"
 #include <assert.h>
@@ -6,7 +6,7 @@
 #include <sys/ptrace.h>
 #include <sys/wait.h>
 
-void SyncProc::start(void (*handler)(int, short, void*), Loader *loader)
+void SockServer::start(void (*handler)(int, short, void*), Loader *loader)
 {
   // DLOG(INFO, "SyncProc: start called\n");
   auto* base = event_base_new();
@@ -22,13 +22,13 @@ void SyncProc::start(void (*handler)(int, short, void*), Loader *loader)
   dispatch();
 }
 
-void SyncProc::dispatch() const
+void SockServer::dispatch() const
 {
   // DLOG(INFO, "SyncProc: dispatch called\n");
   event_base_dispatch(base_.get());
 }
 
-void SyncProc::break_loop() const
+void SockServer::break_loop() const
 {
   // DLOG(INFO, "SyncProc: break_loop called\n");
   event_base_loopbreak(base_.get());

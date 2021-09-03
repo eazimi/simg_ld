@@ -50,8 +50,8 @@ void Loader::run(const char** argv)
     run_child_process([&]() { run_rtld(ldname, 0, param_count.first); });
   } else // parent
   {
-    sync_proc_ = make_unique<SyncProc>();
-    sync_proc_->start(
+    sock_server_ = make_unique<SockServer>();
+    sock_server_->start(
         [](evutil_socket_t sig, short event, void* arg) {
           auto loader = static_cast<Loader*>(arg);
           if (event == EV_READ) {

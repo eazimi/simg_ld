@@ -4,7 +4,7 @@
 #include "dyn_obj_info.hpp"
 #include "global.hpp"
 #include "limits.h"
-#include "sync_proc.hpp"
+#include "sock_server.h"
 #include "cmd_args.hpp"
 #include <asm/prctl.h>
 #include <assert.h>

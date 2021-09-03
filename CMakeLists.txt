@@ -26,8 +26,8 @@ add_executable(simg_ld
     channel.cpp
     global.hpp
     loader_global_funcs.hpp
-    sync_proc.hpp
-    sync_proc.cpp
+    sock_server.h
+    sock_server.cpp
     loader_headers.hpp
     cmd_args.hpp
     )
