@@ -84,9 +84,9 @@ void AppLoader::init(const char* socket)
   // std::cout << "[CHILD], memory layout BEFORE unmmap ..." << std::endl;
   // print_mmapped_ranges();
 
-  DLOG(NOISE, "app_loader: before SIGSTOP\n");
+  DLOG(NOISE, "app_loader: before SIGSTOP, pid: %d\n", getpid());
   assert((errno == 0 && raise(SIGSTOP) == 0) && str); // Wait for the parent to awake me
-  DLOG(NOISE, "app_loader: PTRACE_CONT received\n");
+  DLOG(NOISE, "app_loader: PTRACE_CONT received, pid: %d\n", getpid());
 
   // do munmap
   // std::cout << "[CHILD], memory layout AFTER unmmap ..." << std::endl;

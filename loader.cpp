@@ -56,30 +56,31 @@ void Loader::run(const char** argv)
       sockets_.push_back(sockets[1]);
     }
   }
-  // sync_proc_ = make_unique<SyncProc>(sockets[1]);
-  // sync_proc_->start(
-  //     [](evutil_socket_t sig, short event, void* arg) {
-  //       auto loader = static_cast<Loader*>(arg);
-  //       if (event == EV_READ) {
-  //         // DLOG(NOISE, "parent: EV_READ received\n");
-  //         std::array<char, MESSAGE_LENGTH> buffer;
-  //         ssize_t size = loader->sync_proc_->get_channel().receive(buffer.data(), buffer.size(), false);
-  //         if (size == -1 && errno != EAGAIN) {
-  //           DLOG(ERROR, "%s\n", strerror(errno));
-  //           exit(-1);
-  //         }
-  //         loader->handle_message(buffer.data());
-  //       } else if (event == EV_SIGNAL) {
-  //         if (sig == SIGCHLD) {
-  //           // DLOG(NOISE, "parent: EV_SIGNAL received\n");
-  //           loader->handle_waitpid();
-  //         }
-  //       } else {
-  //         DLOG(ERROR, "Unexpected event\n");
-  //         exit(-1);
-  //       }
-  //     },
-  //     this);
+
+  sync_proc_ = make_unique<SyncProc>();
+  sync_proc_->start(
+      [](evutil_socket_t sig, short event, void* arg) {
+        auto loader = static_cast<Loader*>(arg);
+        if (event == EV_READ) {
+          // DLOG(NOISE, "parent: EV_READ received\n");
+          std::array<char, MESSAGE_LENGTH> buffer;
+          ssize_t size = loader->sync_proc_->get_channel(event).receive(buffer.data(), buffer.size(), false);
+          if (size == -1 && errno != EAGAIN) {
+            DLOG(ERROR, "%s\n", strerror(errno));
+            exit(-1);
+          }
+          loader->handle_message(event, buffer.data());
+        } else if (event == EV_SIGNAL) {
+          if (sig == SIGCHLD) {
+            // DLOG(NOISE, "parent: EV_SIGNAL received\n");
+            loader->handle_waitpid();
+          }
+        } else {
+          DLOG(ERROR, "Unexpected event\n");
+          exit(-1);
+        }
+      },
+      this, sockets_);
 }
 
 void Loader::remove_process(pid_t pid)
@@ -89,7 +90,7 @@ void Loader::remove_process(pid_t pid)
     procs_.erase(it);
 }
 
-void Loader::handle_message(void* buffer)
+void Loader::handle_message(short event, void* buffer)
 {
   vector<string> str_messages{"NONE", "READY", "CONTINUE", "FINISH", "DONE"};
   s_message_t base_message;
@@ -107,7 +108,7 @@ void Loader::handle_message(void* buffer)
     run_app           = true;
     // DLOG(INFO, "parent: sending a %s message to the child ...\n", "DONE");
   }
-  sync_proc_->get_channel().send(base_message);
+  sync_proc_->get_channel(event).send(base_message);
   if (run_app) { // 0: ldname, 1: param_index, 2: param_count
     // run_rtld(args->ld_name(), args->param_index(), args->param_count(1));
     DLOG(INFO, "parent: run_app is true\n");
