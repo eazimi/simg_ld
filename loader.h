@@ -2,6 +2,7 @@
 #define LOADER_H
 
 #include "loader_global_funcs.hpp"
+#include <list>
 
 using namespace std;
 
@@ -29,7 +30,8 @@ private:
 
   std::unique_ptr<MemoryArea_t> g_range_ = nullptr;
   unique_ptr<SyncProc> sync_proc_;
-  std::unordered_set<pid_t> procs_;
+  std::list<pid_t> procs_;
+  std::list<int> sockets_; 
 };
 
 #endif

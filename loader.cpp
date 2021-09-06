@@ -32,53 +32,59 @@ void Loader::run(const char** argv)
   char* ldname = (char*)LD_NAME;
   args->set_args((char*)LD_NAME, param_index, {get<0>(param_count), get<1>(param_count)});
 
-  // Create an AF_LOCAL socketpair used for exchanging messages
-  // between the model-checker process (ourselves) and the model-checked
-  // process:
-  int sockets[2];
-  assert((socketpair(AF_LOCAL, SOCK_SEQPACKET | SOCK_CLOEXEC, 0, sockets) != -1) && "Could not create socketpair");
+  const int CHILD_COUNT = 2;
+  for (auto i = 0; i < CHILD_COUNT; i++) {
+    // Create an AF_LOCAL socketpair used for exchanging messages
+    // between the model-checker process (ourselves) and the model-checked
+    // process:
+    int sockets[2];
+    assert((socketpair(AF_LOCAL, SOCK_SEQPACKET | SOCK_CLOEXEC, 0, sockets) != -1) && "Could not create socketpair");
 
-  pid_t pid = fork();
-  assert(pid >= 0 && "Could not fork child process");
-  procs_.insert(pid);
+    pid_t pid = fork();
+    assert(pid >= 0 && "Could not fork child process");
 
-  if (pid == 0) // child
-  {
-    ::close(sockets[1]);
-    run_child_process(sockets[0], [&]() { run_rtld(ldname, 0, param_count.first, sockets[0]); });
-  } else // parent
-  {
-    ::close(sockets[0]);
-    sync_proc_ = make_unique<SyncProc>(sockets[1]);
-    sync_proc_->start(
-        [](evutil_socket_t sig, short event, void* arg) {
-          auto loader = static_cast<Loader*>(arg);
-          if (event == EV_READ) {
-            // DLOG(NOISE, "parent: EV_READ received\n");
-            std::array<char, MESSAGE_LENGTH> buffer;
-            ssize_t size = loader->sync_proc_->get_channel().receive(buffer.data(), buffer.size(), false);
-            if (size == -1 && errno != EAGAIN) {
-              DLOG(ERROR, "%s\n", strerror(errno));
-              exit(-1);
-            }
-            loader->handle_message(buffer.data());
-          } else if (event == EV_SIGNAL) {
-            if (sig == SIGCHLD) {
-              // DLOG(NOISE, "parent: EV_SIGNAL received\n");
-              loader->handle_waitpid();
-            }
-          } else {
-            DLOG(ERROR, "Unexpected event\n");
-            exit(-1);
-          }
-        },
-        this);
+    if (pid == 0) // child
+    {
+      // DLOG(INFO, "PID = 0, procs_.size = %d, %d\n", procs_.size(), *std::begin(procs_));
+      ::close(sockets[1]);
+      run_child_process(sockets[0], [&]() { run_rtld(ldname, 0, param_count.first, sockets[0]); });
+    } else // parent
+    {
+      DLOG(INFO, "parent: after fork, pid is: %d - in the loop, i is: %d\n", pid, i);      
+      procs_.push_back(pid);
+      ::close(sockets[0]);
+      sockets_.push_back(sockets[1]);
+    }
   }
+  // sync_proc_ = make_unique<SyncProc>(sockets[1]);
+  // sync_proc_->start(
+  //     [](evutil_socket_t sig, short event, void* arg) {
+  //       auto loader = static_cast<Loader*>(arg);
+  //       if (event == EV_READ) {
+  //         // DLOG(NOISE, "parent: EV_READ received\n");
+  //         std::array<char, MESSAGE_LENGTH> buffer;
+  //         ssize_t size = loader->sync_proc_->get_channel().receive(buffer.data(), buffer.size(), false);
+  //         if (size == -1 && errno != EAGAIN) {
+  //           DLOG(ERROR, "%s\n", strerror(errno));
+  //           exit(-1);
+  //         }
+  //         loader->handle_message(buffer.data());
+  //       } else if (event == EV_SIGNAL) {
+  //         if (sig == SIGCHLD) {
+  //           // DLOG(NOISE, "parent: EV_SIGNAL received\n");
+  //           loader->handle_waitpid();
+  //         }
+  //       } else {
+  //         DLOG(ERROR, "Unexpected event\n");
+  //         exit(-1);
+  //       }
+  //     },
+  //     this);
 }
 
 void Loader::remove_process(pid_t pid)
 {
-  auto it = procs_.find(pid);
+  auto it = std::find(procs_.begin(), procs_.end(), pid); 
   if (it != procs_.end())
     procs_.erase(it);
 }
@@ -103,7 +109,8 @@ void Loader::handle_message(void* buffer)
   }
   sync_proc_->get_channel().send(base_message);
   if (run_app) { // 0: ldname, 1: param_index, 2: param_count
-    run_rtld(args->ld_name(), args->param_index(), args->param_count(1));
+    // run_rtld(args->ld_name(), args->param_index(), args->param_count(1));
+    DLOG(INFO, "parent: run_app is true\n");
   }
   // if (!sync_proc->handle_message(buffer.data(), size))
   //   sync_proc->break_loop();
@@ -125,7 +132,7 @@ void Loader::handle_waitpid()
       }
     }
 
-    unordered_set<pid_t>::iterator it = procs_.find(pid);
+    auto it = find(procs_.begin(), procs_.end(), pid);
     if (it == procs_.end()) {
       DLOG(ERROR, "Child process not found\n");
       return;
