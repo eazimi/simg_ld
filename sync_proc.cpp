@@ -12,9 +12,13 @@ void SyncProc::start(void (*handler)(int, short, void*), Loader *loader, list<in
   auto* base = event_base_new();
   base_.reset(base);
 
-  // auto* socket_event = event_new(base, get_channel().get_socket(), EV_READ | EV_PERSIST, handler, loader);
-  // event_add(socket_event, nullptr);
-  // socket_event_.reset(socket_event);
+  for (auto s : sockets) {
+    unique_ptr<Channel> channel = make_unique<Channel>(s);
+    auto* socket_event          = event_new(base, channel->get_socket(), EV_READ | EV_PERSIST, handler, loader);
+    event_add(socket_event, nullptr);
+    ch_hash.insert({s, std::move(channel)});
+    DLOG(INFO, "SyncProc, socket %d inserted into hash\n", s);
+  }
 
   auto* signal_event = event_new(base, SIGCHLD, EV_SIGNAL | EV_PERSIST, handler, loader);
   event_add(signal_event, nullptr);

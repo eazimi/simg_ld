@@ -54,22 +54,24 @@ void Loader::run(const char** argv)
       procs_.push_back(pid);
       ::close(sockets[0]);
       sockets_.push_back(sockets[1]);
+      // DLOG(NOISE, "parent: socket is %d\n", sockets[1]);
     }
   }
 
+  // due to run_child_process(), child never reaches here
   sync_proc_ = make_unique<SyncProc>();
   sync_proc_->start(
       [](evutil_socket_t sig, short event, void* arg) {
         auto loader = static_cast<Loader*>(arg);
         if (event == EV_READ) {
-          // DLOG(NOISE, "parent: EV_READ received\n");
+          // DLOG(NOISE, "parent: EV_READ received, sig is: %d\n", sig);
           std::array<char, MESSAGE_LENGTH> buffer;
-          ssize_t size = loader->sync_proc_->get_channel(event).receive(buffer.data(), buffer.size(), false);
+          ssize_t size = loader->sync_proc_->get_channel(sig).receive(buffer.data(), buffer.size(), false);
           if (size == -1 && errno != EAGAIN) {
             DLOG(ERROR, "%s\n", strerror(errno));
             exit(-1);
           }
-          loader->handle_message(event, buffer.data());
+          loader->handle_message(sig, buffer.data());
         } else if (event == EV_SIGNAL) {
           if (sig == SIGCHLD) {
             // DLOG(NOISE, "parent: EV_SIGNAL received\n");
@@ -90,13 +92,13 @@ void Loader::remove_process(pid_t pid)
     procs_.erase(it);
 }
 
-void Loader::handle_message(short event, void* buffer)
+void Loader::handle_message(int socket, void* buffer)
 {
   vector<string> str_messages{"NONE", "READY", "CONTINUE", "FINISH", "DONE"};
   s_message_t base_message;
   memcpy(&base_message, static_cast<char*>(buffer), sizeof(base_message));
   auto str_message_type = str_messages[static_cast<int>(base_message.type)];
-  DLOG(INFO, "parent: child sent a %s message\n", str_message_type.c_str());
+  DLOG(INFO, "parent: child sent a %s message, %d\n", str_message_type.c_str(), socket);
 
   base_message.pid = getpid();
   bool run_app     = false;
@@ -108,7 +110,7 @@ void Loader::handle_message(short event, void* buffer)
     run_app           = true;
     // DLOG(INFO, "parent: sending a %s message to the child ...\n", "DONE");
   }
-  sync_proc_->get_channel(event).send(base_message);
+  sync_proc_->get_channel(socket).send(base_message);
   if (run_app) { // 0: ldname, 1: param_index, 2: param_count
     // run_rtld(args->ld_name(), args->param_index(), args->param_count(1));
     DLOG(INFO, "parent: run_app is true\n");

@@ -25,7 +25,7 @@ private:
   void hide_free_memory_regions();
   void release_reserved_memory_region();
   void handle_waitpid();
-  void handle_message(short event, void* buffer);
+  void handle_message(int socket, void* buffer);
   void remove_process(pid_t pid);
 
   std::unique_ptr<MemoryArea_t> g_range_ = nullptr;

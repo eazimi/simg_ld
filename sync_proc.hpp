@@ -18,7 +18,7 @@ private:
   vector<unique_ptr<event, decltype(&event_free)>> socket_event_;
   unique_ptr<event, decltype(&event_free)> signal_event_{nullptr, &event_free};
 
-  map<short, unique_ptr<Channel>> ch_hash;
+  map<int, unique_ptr<Channel>> ch_hash;
 
 public:
   explicit SyncProc() = default;
@@ -32,7 +32,7 @@ public:
   void dispatch() const;
   void break_loop() const;
 
-  inline const Channel& get_channel(short event) { return *(ch_hash[event].get());  }
+  inline const Channel& get_channel(int socket) { return *(ch_hash[socket].get());  }
 };
 
 #endif
