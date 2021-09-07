@@ -45,16 +45,13 @@ void Loader::run(const char** argv)
 
     if (pid == 0) // child
     {
-      // DLOG(INFO, "PID = 0, procs_.size = %d, %d\n", procs_.size(), *std::begin(procs_));
       ::close(sockets[1]);
       run_child_process(sockets[0], [&]() { run_rtld(ldname, 0, param_count.first, sockets[0]); });
     } else // parent
     {
-      DLOG(INFO, "parent: after fork, pid is: %d - in the loop, i is: %d\n", pid, i);      
       procs_.push_back(pid);
       ::close(sockets[0]);
       sockets_.push_back(sockets[1]);
-      // DLOG(NOISE, "parent: socket is %d\n", sockets[1]);
     }
   }
 
@@ -64,7 +61,6 @@ void Loader::run(const char** argv)
       [](evutil_socket_t sig, short event, void* arg) {
         auto loader = static_cast<Loader*>(arg);
         if (event == EV_READ) {
-          // DLOG(NOISE, "parent: EV_READ received, sig is: %d\n", sig);
           std::array<char, MESSAGE_LENGTH> buffer;
           ssize_t size = loader->sync_proc_->get_channel(sig).receive(buffer.data(), buffer.size(), false);
           if (size == -1 && errno != EAGAIN) {
@@ -74,7 +70,6 @@ void Loader::run(const char** argv)
           loader->handle_message(sig, buffer.data());
         } else if (event == EV_SIGNAL) {
           if (sig == SIGCHLD) {
-            // DLOG(NOISE, "parent: EV_SIGNAL received\n");
             loader->handle_waitpid();
           }
         } else {
@@ -98,22 +93,19 @@ void Loader::handle_message(int socket, void* buffer)
   s_message_t base_message;
   memcpy(&base_message, static_cast<char*>(buffer), sizeof(base_message));
   auto str_message_type = str_messages[static_cast<int>(base_message.type)];
-  DLOG(INFO, "parent: child sent a %s message, %d\n", str_message_type.c_str(), socket);
+  DLOG(INFO, "parent: child %d sent a %s message, socket = %d\n", base_message.pid, str_message_type.c_str(), socket);
 
   base_message.pid = getpid();
   bool run_app     = false;
   if (base_message.type == MessageType::READY) {
     base_message.type = MessageType::CONTINUE;
-    // DLOG(INFO, "parent: sending a %s message to the child ...\n", "CONTINUE");
   } else if (base_message.type == MessageType::FINISH) {
     base_message.type = MessageType::DONE;
     run_app           = true;
-    // DLOG(INFO, "parent: sending a %s message to the child ...\n", "DONE");
   }
   sync_proc_->get_channel(socket).send(base_message);
   if (run_app) { // 0: ldname, 1: param_index, 2: param_count
     // run_rtld(args->ld_name(), args->param_index(), args->param_count(1));
-    DLOG(INFO, "parent: run_app is true\n");
   }
   // if (!sync_proc->handle_message(buffer.data(), size))
   //   sync_proc->break_loop();

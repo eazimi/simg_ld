@@ -84,9 +84,9 @@ void AppLoader::init(const char* socket)
   // std::cout << "[CHILD], memory layout BEFORE unmmap ..." << std::endl;
   // print_mmapped_ranges();
 
-  DLOG(NOISE, "app_loader: before SIGSTOP, pid: %d\n", getpid());
+  DLOG(NOISE, "child %d: before SIGSTOP\n", getpid());
   assert((errno == 0 && raise(SIGSTOP) == 0) && str); // Wait for the parent to awake me
-  DLOG(NOISE, "app_loader: PTRACE_CONT received, pid: %d\n", getpid());
+  DLOG(NOISE, "child %d: PTRACE_CONT received\n", getpid());
 
   // do munmap
   // std::cout << "[CHILD], memory layout AFTER unmmap ..." << std::endl;
@@ -112,7 +112,7 @@ void AppLoader::handle_message() const
     const s_message_t* message = (s_message_t*)message_buffer.data();
     switch (message->type) {
       case MessageType::CONTINUE:
-        DLOG(INFO, "child: parent sent a %s message, pid = %d\n", "CONTINUE", getpid());
+        DLOG(INFO, "child %d: parent sent a %s message\n", getpid(), "CONTINUE");
         s_message_t base_message;
         base_message.type = MessageType::FINISH;
         base_message.pid  = getpid();
@@ -120,12 +120,12 @@ void AppLoader::handle_message() const
         break;
 
       case MessageType::DONE:
-        DLOG(INFO, "child: parent sent a %s message, pid = %d\n", "DONE", getpid());
+        DLOG(INFO, "child %d: parent sent a %s message\n", getpid(), "DONE");
         // loop = false;
         break;
 
       default:
-        DLOG(ERROR, "child: parent sent an invalid message, \n");
+        DLOG(ERROR, "child %d: parent sent an invalid message\n", getpid());
     }
   }
   // raise(SIGINT);
