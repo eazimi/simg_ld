@@ -5,7 +5,7 @@
 #include "global.hpp"
 #include "limits.h"
 #include "sync_proc.hpp"
-#include "cmd_args.hpp"
+#include "cmd_args.h"
 #include <asm/prctl.h>
 #include <assert.h>
 #include <cstdint>

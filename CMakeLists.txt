@@ -29,7 +29,8 @@ add_executable(simg_ld
     sync_proc.hpp
     sync_proc.cpp
     loader_headers.hpp
-    cmd_args.hpp
+    cmd_args.h
+    cmd_args.cpp
     memory_map.h
     memory_map.cpp
     )

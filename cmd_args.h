@@ -2,17 +2,21 @@
 #define CMD_ARGS_H
 
 #include <vector>
+#include <string>
 
 using namespace std;
 
-class CMD_Args {
+class cmd_args {
 private:
   char* ld_name_;
   int param_index_;
   vector<int> param_count_;
 
+  int num_of_processes_;
+  vector<pair<string, vector<string>>> args_;
+
 public:
-  explicit CMD_Args() = default;
+  explicit cmd_args() = default;
 
   inline void set_args(char* ld_name, int param_index, vector<int> param_count)      
   {
@@ -28,6 +32,10 @@ public:
     auto param_cnt = (index >= 0 && index < param_count_.size()) ? param_count_[index] : -1;
     return param_cnt;
   }
+
+  inline vector<pair<string, vector<string>>> get_processed_args() const { return args_; }
+  void process_argv(char** argv);
+  inline int get_process_count() const { return num_of_processes_; }
 };
 
 #endif
