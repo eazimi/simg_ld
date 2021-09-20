@@ -284,6 +284,24 @@ static void print_mmapped_ranges(pid_t pid = -1)
   }
 }
 
+static void write_mmapped_ranges(string file_label, pid_t pid = -1)
+{
+  stringstream ss;
+  ss << pid << "_" << file_label << ".txt";
+  ofstream ofs(ss.str(), ofstream::out);
+
+  std::string maps_path = "/proc/self/maps";
+  std::filebuf fb;
+  std::string line;
+  if (fb.open(maps_path, std::ios_base::in)) {
+    std::istream is(&fb);
+    while (std::getline(is, line))
+      ofs << line << std::endl;
+    fb.close();
+  }
+  ofs.close();
+}
+
 static long int str_parse_int(const char* str, const char* error_msg)
 {
   stringstream ss;
