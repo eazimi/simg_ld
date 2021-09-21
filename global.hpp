@@ -287,7 +287,7 @@ static void print_mmapped_ranges(pid_t pid = -1)
 static void write_mmapped_ranges(string file_label, pid_t pid = -1)
 {
   stringstream ss;
-  ss << pid << "_" << file_label << ".txt";
+  ss << "./log/" << pid << "_" << file_label << ".txt";
   ofstream ofs(ss.str(), ofstream::out);
 
   std::string maps_path = "/proc/self/maps";

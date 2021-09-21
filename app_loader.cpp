@@ -19,7 +19,7 @@ AppLoader::AppLoader(const char* socket)
 void AppLoader::release_parent_memory_region()
 {
   const string maps_path = "/proc/self/maps";
-  vector<string> tokens{"/simg_ld", "[heap]", "[stack]", "[vvar]", "[vdso]"};
+  vector<string> tokens{"/simg_ld", "/dynamic_load", "[heap]", "[stack]", "[vvar]", "[vdso]"};
   vector<pair<unsigned long, unsigned long>> all_addr = getRanges(maps_path, tokens);
   for (auto it : all_addr) {
     auto ret = munmap((void*)it.first, it.second - it.first);
@@ -83,6 +83,7 @@ void AppLoader::init(const char* socket)
 
   // std::cout << "[CHILD], memory layout BEFORE unmmap ..." << std::endl;
   // print_mmapped_ranges();
+  write_mmapped_ranges("before_release_child", getpid());
 
   DLOG(NOISE, "child %d: before SIGSTOP\n", getpid());
   assert((errno == 0 && raise(SIGSTOP) == 0) && str); // Wait for the parent to awake me
@@ -92,6 +93,7 @@ void AppLoader::init(const char* socket)
   // std::cout << "[CHILD], memory layout AFTER unmmap ..." << std::endl;
   release_parent_memory_region();
   // print_mmapped_ranges();
+  write_mmapped_ranges("after_release_child", getpid());
 
   s_message_t message{MessageType::READY, getpid()};
   assert(channel_->send(message) == 0 && "Could not send the initial message.");
@@ -117,6 +119,8 @@ void AppLoader::handle_message() const
         base_message.type = MessageType::FINISH;
         base_message.pid  = getpid();
         channel_->send(base_message);
+        // write into memory here
+
         break;
 
       case MessageType::DONE:

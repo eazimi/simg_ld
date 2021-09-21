@@ -13,9 +13,13 @@ int Loader::init(const char** argv, pair<int, int>& param_count)
   _parent_pid = getpid();
 
   // reserve some 2 GB in the address space, lock remained free areas
+  write_mmapped_ranges("before_reserve", 00000);
   reserve_memory_region();
+  write_mmapped_ranges("after_reserve", 00000);
   hide_free_memory_regions();
+  write_mmapped_ranges("after_hide", 00000);
   release_reserved_memory_region();
+  write_mmapped_ranges("after_release_reserved", 00000);
 
   return param_index;
 }
@@ -198,6 +202,7 @@ void Loader::run_rtld(const char* ldname, int param_index, int param_count, int 
   ss << ((getpid() == _parent_pid) ? "[PARENT], " : "[CHILD], ") << "before jumping to sp: " << std::dec << getpid();
   pause_run(ss.str());
   // print_mmapped_ranges(getpid());
+  write_mmapped_ranges("before_jump_run_rtld", getpid());
 
   // Pointer to the ld.so entry point
   void* ldso_entrypoint = ldso.get_entry_point();
@@ -347,6 +352,14 @@ void Loader::hide_free_memory_regions()
       exit(-1);
     }
   }
+
+  ofstream ofs("./log/free_space_locked.txt", ofstream::out);
+  for (auto m : mmaps_range) {
+    if ((unsigned long)m.end - (unsigned long)m.start > 0) {
+      ofs << m.start << " - " << m.end << endl;// << " - " << end << endl;
+    }
+  }
+  ofs.close();
 }
 
 void Loader::reserve_memory_region()
@@ -370,8 +383,8 @@ void Loader::reserve_memory_region()
     g_range_->start = (VA)area.addr - _3_GB;
     g_range_->end   = (VA)area.addr - _1_GB;
   }
-  // std::cout << "setReservedMemRange(): start = " << std::hex << g_range->start << " , end = " << g_range->end <<
-  // std::endl;
+
+  std::cout << "init: setReservedMemRange(): start = " << std::hex << g_range_->start << " , end = " << g_range_->end << std::endl;
 
   void* region = mmapWrapper(g_range_->start, (unsigned long)g_range_->end - (unsigned long)g_range_->start,
                              PROT_READ | PROT_WRITE, MAP_GROWSDOWN | MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
