@@ -36,5 +36,6 @@ add_executable(simg_ld
     mem_space.cpp
     stack.h
     stack.cpp
+    heap.hpp
     )
 target_link_libraries(simg_ld ${CMAKE_SOURCE_DIR}/libevent_core.a -static)
