@@ -60,3 +60,9 @@ void* Stack::get_argv_addr(const void* stackEnd) const
   return (void*)((unsigned long)(stackEnd) + 2 * sizeof(uintptr_t));
 }
 
+// Returns pointer to env[0], given a pointer to end of stack
+void* Stack::get_env_addr(char** argv, int argc) const
+{
+  return (void*)&argv[argc + 1];
+}
+

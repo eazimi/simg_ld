@@ -10,6 +10,7 @@ private:
   Area&& getStackRegion();
   void* get_argc_addr(const void* stackEnd) const;
   void* get_argv_addr(const void* stackEnd) const;
+  void* get_env_addr(char** argv, int argc) const;
 
 public:
   explicit Stack();
