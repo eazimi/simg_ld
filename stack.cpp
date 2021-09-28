@@ -66,3 +66,14 @@ void* Stack::get_env_addr(char** argv, int argc) const
   return (void*)&argv[argc + 1];
 }
 
+// Returns a pointer to aux vector, given a pointer to the environ vector on the stack
+ElfW(auxv_t) * Stack::get_auxv_addr(const char** env) const
+{
+  ElfW(auxv_t) * auxvec;
+  const char** evp = env;
+  while (*evp++ != nullptr)
+    ;
+  auxvec = (ElfW(auxv_t)*)evp;
+  return auxvec;
+}
+
