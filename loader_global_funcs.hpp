@@ -88,6 +88,7 @@ static void getProcStatField(enum Procstat_t type, char* out, size_t len)
   }
 }
 
+// TODO: remove this func.
 // Returns the [stack] area by reading the proc maps
 static void getStackRegion(Area* stack) // OUT
 {
