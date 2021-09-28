@@ -48,3 +48,9 @@ void Stack::getProcStatField(enum Procstat_t type, char* out, size_t len)
     DLOG(ERROR, "Failed to parse %s.\n", procPath);
   }
 }
+
+void* Stack::get_argc_addr(const void* stackEnd) const
+{
+  return (void*)((uintptr_t)(stackEnd) + sizeof(uintptr_t));
+}
+
