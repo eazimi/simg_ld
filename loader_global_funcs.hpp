@@ -56,6 +56,7 @@ static void patchAuxv(ElfW(auxv_t) * av, unsigned long phnum, unsigned long phdr
   }
 }
 
+// TODO: remove this func.
 // Returns the /proc/self/stat entry in the out string (of length len)
 static void getProcStatField(enum Procstat_t type, char* out, size_t len)
 {

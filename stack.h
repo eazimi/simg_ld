@@ -6,6 +6,7 @@
 class Stack {
 private:
   void* stack_end_ = nullptr;
+  void getProcStatField(enum Procstat_t type, char* out, size_t len);
   Area&& getStackRegion();
 
 public:
