@@ -229,3 +229,66 @@ void Stack::patchAuxv(ElfW(auxv_t) * av, unsigned long phnum, unsigned long phdr
     }
   }
 }
+
+// This function does three things:
+//  1. Creates a new stack region to be used for initialization of RTLD (ld.so)
+//  2. Deep copies the original stack (from the kernel) in the new stack region
+//  3. Returns a pointer to the beginning of stack in the new stack region
+void* Stack::createNewStack(const DynObjInfo& info, void* startAddr, int param_index, int param_count, int socket_id)
+{
+  Area stack;
+  char stackEndStr[20] = {0};
+  stack = getStackRegion();
+
+  // 1. Allocate new stack region
+  // We go through the mmap wrapper function to ensure that this gets added
+  // to the list of upper half regions to be checkpointed.
+
+  void* stackStartAddr = (void*)((unsigned long)startAddr + _1_GB);
+
+  void* newStack =
+      mmapWrapper(stackStartAddr, stack.size, PROT_READ | PROT_WRITE, MAP_GROWSDOWN | MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+  if (newStack == MAP_FAILED) {
+    DLOG(ERROR, "Failed to mmap new stack region: %s\n", strerror(errno));
+    return nullptr;
+  }
+  // DLOG(INFO, "New stack mapped at: %p\n", newStack);
+
+  // 3. Get pointer to the beginning of the stack in the new stack region
+  // The idea here is to look at the beginning of stack in the original
+  // stack region, and use that to index into the new memory region. The
+  // same offsets are valid in both the stack regions.
+  getProcStatField(STARTSTACK, stackEndStr, sizeof stackEndStr);
+
+  // NOTE: The kernel sets up the stack in the following format.
+  //      -1(%rsp)                       Stack end for application
+  //      0(%rsp)                        argc (Stack start for application)
+  //      LP_SIZE(%rsp)                  argv[0]
+  //      (2*LP_SIZE)(%rsp)              argv[1]
+  //      ...
+  //      (LP_SIZE*(argc))(%rsp)         NULL
+  //      (LP_SIZE*(argc+1))(%rsp)       envp[0]
+  //      (LP_SIZE*(argc+2))(%rsp)       envp[1]
+  //      ...
+  //                                     NULL
+  //
+  // NOTE: proc-stat returns the address of argc on the stack.
+  // argv[0] is 1 LP_SIZE ahead of argc, i.e., startStack + sizeof(void*)
+  // Stack End is 1 LP_SIZE behind argc, i.e., startStack - sizeof(void*)
+  // sizeof(unsigned long) == sizeof(void*) == 8 on x86-64
+  unsigned long origStackEnd    = atol(stackEndStr) - sizeof(unsigned long);
+  unsigned long origStackOffset = origStackEnd - (unsigned long)stack.addr;
+  unsigned long newStackOffset  = origStackOffset;
+  void* newStackEnd             = (void*)((unsigned long)newStack + newStackOffset);
+
+  // printf("origStack: %lu origStackOffset: %lu OrigStackEnd: %lu \n", (unsigned long)stack.addr, (unsigned
+  // long)origStackOffset, (unsigned long)origStackEnd); printf("newStack: %lu newStackOffset: %lu newStackEnd: %lu \n",
+  // (unsigned long)newStack, (unsigned long)newStackOffset, (unsigned long)newStackEnd);
+
+  // 2. Deep copy stack
+  newStackEnd = deepCopyStack(newStack, stack.addr, stack.size, (void*)newStackEnd, (void*)origStackEnd, info,
+                              param_index, param_count, socket_id);
+
+  stack_end_ = newStackEnd;
+  return newStackEnd;
+}

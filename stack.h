@@ -21,6 +21,7 @@ private:
 public:
   explicit Stack();
   inline void* getStackEnd() const { return stack_end_; }
+  void* createNewStack(const DynObjInfo& info, void* startAddr, int param_index, int param_count, int socket_id);
 };
 
 #endif
