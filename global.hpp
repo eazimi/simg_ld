@@ -418,4 +418,11 @@ skipeol:
   return 0; /* NOTREACHED : stop compiler warning */
 }
 
+static void* mmapWrapper(void* addr, size_t length, int prot, int flags, int fd, off_t offset)
+{
+  length    = ROUND_UP(length);
+  void* ret = mmap(addr, length, prot, flags, fd, offset);
+  return ret;
+}
+
 #endif

@@ -231,13 +231,6 @@ static void* deepCopyStack(void* newStack, const void* origStack, size_t len, co
   return (void*)newArgcAddr;
 }
 
-static void* mmapWrapper(void* addr, size_t length, int prot, int flags, int fd, off_t offset)
-{
-  length    = ROUND_UP(length);
-  void* ret = mmap(addr, length, prot, flags, fd, offset);
-  return ret;
-}
-
 static void run_child_process(int socket, const function<void()>& func)
 {
 #ifdef __linux__
