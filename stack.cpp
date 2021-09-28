@@ -54,3 +54,9 @@ void* Stack::get_argc_addr(const void* stackEnd) const
   return (void*)((uintptr_t)(stackEnd) + sizeof(uintptr_t));
 }
 
+// Returns pointer to argv[0], given a pointer to end of stack
+void* Stack::get_argv_addr(const void* stackEnd) const
+{
+  return (void*)((unsigned long)(stackEnd) + 2 * sizeof(uintptr_t));
+}
+

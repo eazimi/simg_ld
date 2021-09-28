@@ -9,6 +9,7 @@ private:
   void getProcStatField(enum Procstat_t type, char* out, size_t len);
   Area&& getStackRegion();
   void* get_argc_addr(const void* stackEnd) const;
+  void* get_argv_addr(const void* stackEnd) const;
 
 public:
   explicit Stack();
