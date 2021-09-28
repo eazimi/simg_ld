@@ -72,16 +72,16 @@ void* Stack::deepCopyStack(void* newStack, const void* origStack, size_t len, co
   // the argv and env are simply arrays of pointers. The pointers point to
   // strings in other locations in the stack.
 
-  void* origArgcAddr   = (void*)get_argc_addr(origStackEnd);
+  void* origArgcAddr   = (void*)getArgcAddr(origStackEnd);
   int origArgc         = *(int*)origArgcAddr;
-  char** origArgv      = (char**)get_argv_addr(origStackEnd);
-  const char** origEnv = (const char**)get_env_addr(origArgv, origArgc);
+  char** origArgv      = (char**)getArgvAddr(origStackEnd);
+  const char** origEnv = (const char**)getEnvAddr(origArgv, origArgc);
 
-  void* newArgcAddr     = (void*)get_argc_addr(newStackEnd);
+  void* newArgcAddr     = (void*)getArgcAddr(newStackEnd);
   int newArgc           = *(int*)newArgcAddr;
-  char** newArgv        = (char**)get_argv_addr(newStackEnd);
-  const char** newEnv   = (const char**)get_env_addr(newArgv, newArgc);
-  ElfW(auxv_t)* newAuxv = get_auxv_addr(newEnv);
+  char** newArgv        = (char**)getArgvAddr(newStackEnd);
+  const char** newEnv   = (const char**)getEnvAddr(newArgv, newArgc);
+  ElfW(auxv_t)* newAuxv = getAuxvAddr(newEnv);
 
   // Patch the argv vector in the new stack
   //   First, set up the argv vector based on the original stack
@@ -176,25 +176,25 @@ void* Stack::deepCopyStack(void* newStack, const void* origStack, size_t len, co
   return (void*)newArgcAddr;
 }
 
-void* Stack::get_argc_addr(const void* stackEnd) const
+void* Stack::getArgcAddr(const void* stackEnd) const
 {
   return (void*)((uintptr_t)(stackEnd) + sizeof(uintptr_t));
 }
 
 // Returns pointer to argv[0], given a pointer to end of stack
-void* Stack::get_argv_addr(const void* stackEnd) const
+void* Stack::getArgvAddr(const void* stackEnd) const
 {
   return (void*)((unsigned long)(stackEnd) + 2 * sizeof(uintptr_t));
 }
 
 // Returns pointer to env[0], given a pointer to end of stack
-void* Stack::get_env_addr(char** argv, int argc) const
+void* Stack::getEnvAddr(char** argv, int argc) const
 {
   return (void*)&argv[argc + 1];
 }
 
 // Returns a pointer to aux vector, given a pointer to the environ vector on the stack
-ElfW(auxv_t) * Stack::get_auxv_addr(const char** env) const
+ElfW(auxv_t) * Stack::getAuxvAddr(const char** env) const
 {
   ElfW(auxv_t) * auxvec;
   const char** evp = env;
