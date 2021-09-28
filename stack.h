@@ -12,6 +12,7 @@ private:
   void* get_argv_addr(const void* stackEnd) const;
   void* get_env_addr(char** argv, int argc) const;
   ElfW(auxv_t) * get_auxv_addr(const char** env) const;
+  void patchAuxv(ElfW(auxv_t) * av, unsigned long phnum, unsigned long phdr, unsigned long entry) const;
 
 public:
   explicit Stack();

@@ -77,3 +77,28 @@ ElfW(auxv_t) * Stack::get_auxv_addr(const char** env) const
   return auxvec;
 }
 
+/* 
+  Given a pointer to aux vector, parses the aux vector, and patches the
+  following three entries: AT_PHDR, AT_ENTRY, and AT_PHNUM 
+*/
+void Stack::patchAuxv(ElfW(auxv_t) * av, unsigned long phnum, unsigned long phdr, unsigned long entry) const
+{
+  for (; av->a_type != AT_NULL; ++av) {
+    switch (av->a_type) {
+      case AT_PHNUM:
+        av->a_un.a_val = phnum;
+        break;
+      case AT_PHDR:
+        av->a_un.a_val = phdr;
+        break;
+      case AT_ENTRY:
+        av->a_un.a_val = entry;
+        break;
+      case AT_RANDOM:
+        // DLOG(NOISE, "AT_RANDOM value: 0%lx\n", av->a_un.a_val);
+        break;
+      default:
+        break;
+    }
+  }
+}
