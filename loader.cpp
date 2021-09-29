@@ -188,7 +188,7 @@ void Loader::run_rtld(const char* ldname, int param_index, int param_count, int 
 
   // Create new stack region to be used by RTLD
   unique_ptr<Stack> stack(new Stack());
-  void* stackStartAddr = (void*)((unsigned long)g_range_->start + _1_GB);
+  void* stackStartAddr = (void*)((unsigned long)g_range_->start + GB1);
   void* newStack = stack->createNewStack(ldso, stackStartAddr, param_index, param_count, socket_id);
 
   if (!newStack) {
@@ -198,7 +198,7 @@ void Loader::run_rtld(const char* ldname, int param_index, int param_count, int 
 
   // Create new heap region to be used by RTLD
   unique_ptr<Heap> heap(new Heap());
-  void* heapStartAddr = (void*)((unsigned long)g_range_->start + _1500_MB);
+  void* heapStartAddr = (void*)((unsigned long)g_range_->start + MB1500);
   void* newHeap = heap->createNewHeap(heapStartAddr);
   if (!newHeap) {
     DLOG(ERROR, "Error creating new heap for RTLD. Exiting...\n");
@@ -299,8 +299,8 @@ void Loader::reserve_memory_region()
   close(mapsfd);
 
   if (found) {
-    g_range_->start = (VA)area.addr - _3_GB;
-    g_range_->end   = (VA)area.addr - _1_GB;
+    g_range_->start = (VA)area.addr - GB3;
+    g_range_->end   = (VA)area.addr - GB1;
   }
   // std::cout << "setReservedMemRange(): start = " << std::hex << g_range->start << " , end = " << g_range->end <<
   // std::endl;

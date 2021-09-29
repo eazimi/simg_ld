@@ -47,8 +47,8 @@ void AppLoader::get_reserved_memory_region(std::pair<void*, void*>& range)
   close(mapsfd);
 
   if (found) {
-    reserved_area->start = (VA)area.addr - _3_GB;
-    reserved_area->end   = (VA)area.addr - _1_GB;
+    reserved_area->start = (VA)area.addr - GB3;
+    reserved_area->end   = (VA)area.addr - GB1;
     range.first          = reserved_area->start;
     range.second         = reserved_area->end;
   }

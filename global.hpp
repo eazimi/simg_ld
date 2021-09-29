@@ -28,9 +28,9 @@ constexpr unsigned MESSAGE_LENGTH = 512;
 
 #define PAGE_SIZE 0x1000LL
 
-#define _1_GB 0x40000000
-#define _1500_MB 0x60000000
-#define _3_GB 0xc0000000
+#define GB1 0x40000000
+#define MB1500 0x60000000
+#define GB3 0xc0000000
 
 // Logging levels
 #define NOISE 3 // Noise!
