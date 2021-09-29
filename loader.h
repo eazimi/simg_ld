@@ -19,7 +19,6 @@ private:
   DynObjInfo load_lsdo(const char* ld_name);
   void* load_elf_interpreter(const char* elf_interpreter, DynObjInfo& info);
   unsigned long map_elf_interpreter_load_segment(int fd, Elf64_Ehdr* ehdr, Elf64_Phdr* phdr);
-  void* create_new_heap_for_ldso();
   void reserve_memory_region();
   void hide_free_memory_regions();
   void release_reserved_memory_region();

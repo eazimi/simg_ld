@@ -1,5 +1,6 @@
 #include "loader.h"
 #include "stack.h"
+#include "heap.hpp"
 
 int Loader::init(const char** argv, pair<int, int>& param_count)
 {
@@ -196,7 +197,9 @@ void Loader::run_rtld(const char* ldname, int param_index, int param_count, int 
   }
 
   // Create new heap region to be used by RTLD
-  void* newHeap = create_new_heap_for_ldso();
+  unique_ptr<Heap> heap(new Heap());
+  void* heapStartAddr = (void*)((unsigned long)g_range_->start + _1500_MB);
+  void* newHeap = heap->createNewHeap(heapStartAddr);
   if (!newHeap) {
     DLOG(ERROR, "Error creating new heap for RTLD. Exiting...\n");
     exit(-1);
@@ -217,32 +220,6 @@ void Loader::run_rtld(const char* ldname, int param_index, int param_count, int 
 
   DLOG(ERROR, "Error: RTLD returned instead of passing the control to the created stack. Panic...\n");
   exit(-1);
-}
-
-// This function allocates a new heap for (the possibly second) ld.so.
-// The initial heap size is 1 page
-//
-// Returns the start address of the new heap on success, or NULL on
-// failure.
-void* Loader::create_new_heap_for_ldso()
-{
-  const uint64_t heapSize = 100 * PAGE_SIZE;
-
-  // We go through the mmap wrapper function to ensure that this gets added
-  // to the list of upper half regions to be checkpointed.
-
-  void* startAddr = (void*)((unsigned long)g_range_->start + _1500_MB);
-
-  void* addr = mmapWrapper(startAddr /*0*/, heapSize, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
-
-  if (addr == MAP_FAILED) {
-    DLOG(ERROR, "Failed to mmap region. Error: %s\n", strerror(errno));
-    return NULL;
-  }
-  // Add a guard page before the start of heap; this protects
-  // the heap from getting merged with a "previous" region.
-  mprotect(addr, PAGE_SIZE, PROT_NONE);
-  return addr;
 }
 
 DynObjInfo Loader::load_lsdo(const char* ld_name)
