@@ -32,8 +32,8 @@ add_executable(simg_ld
     cmd_args.hpp
     memory_map.h
     memory_map.cpp
-    mem_space.h
-    mem_space.cpp
+    stack_heap.h
+    stack_heap.cpp
     stack.h
     stack.cpp
     heap.hpp
