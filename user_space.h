@@ -21,6 +21,7 @@ public:
   void* createNewStack(const DynObjInfo& info, void* stackStartAddr, int param_index, int param_count,
                        int socket_id) const;
   void reserve_mem_space(unsigned long size);
+  inline void* getStartAddr() const { return startAddr_; }
 };
 
 #endif
