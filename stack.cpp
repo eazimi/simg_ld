@@ -4,17 +4,17 @@
 Stack::Stack() {}
 
 // Returns the [stack] area by reading the proc maps
-Area&& Stack::getStackRegion()
+void Stack::getStackRegion(Area *stack)
 {
   Area area;
   int mapsfd = open("/proc/self/maps", O_RDONLY);
   while (readMapsLine(mapsfd, &area)) {
     if (strstr(area.name, "[stack]") && area.endAddr >= (VA)&area) {
+      *stack = area;  
       break;
     }
   }
   close(mapsfd);
-  return std::move(area);
 }
 
 // Returns the /proc/self/stat entry in the out string (of length len)
@@ -234,18 +234,15 @@ void Stack::patchAuxv(ElfW(auxv_t) * av, unsigned long phnum, unsigned long phdr
 //  1. Creates a new stack region to be used for initialization of RTLD (ld.so)
 //  2. Deep copies the original stack (from the kernel) in the new stack region
 //  3. Returns a pointer to the beginning of stack in the new stack region
-void* Stack::createNewStack(const DynObjInfo& info, void* startAddr, int param_index, int param_count, int socket_id)
+void* Stack::createNewStack(const DynObjInfo& info, void* stackStartAddr, int param_index, int param_count, int socket_id)
 {
   Area stack;
   char stackEndStr[20] = {0};
-  stack = getStackRegion();
+  getStackRegion(&stack);
 
   // 1. Allocate new stack region
   // We go through the mmap wrapper function to ensure that this gets added
   // to the list of upper half regions to be checkpointed.
-
-  void* stackStartAddr = (void*)((unsigned long)startAddr + _1_GB);
-
   void* newStack =
       mmapWrapper(stackStartAddr, stack.size, PROT_READ | PROT_WRITE, MAP_GROWSDOWN | MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
   if (newStack == MAP_FAILED) {
@@ -258,6 +255,7 @@ void* Stack::createNewStack(const DynObjInfo& info, void* startAddr, int param_i
   // The idea here is to look at the beginning of stack in the original
   // stack region, and use that to index into the new memory region. The
   // same offsets are valid in both the stack regions.
+
   getProcStatField(STARTSTACK, stackEndStr, sizeof stackEndStr);
 
   // NOTE: The kernel sets up the stack in the following format.
