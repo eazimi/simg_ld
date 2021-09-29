@@ -22,6 +22,7 @@ public:
                        int socket_id) const;
   void reserve_mem_space(unsigned long size);
   inline void* getStartAddr() const { return startAddr_; }
+  inline unsigned long getSize() const { return size_; }
 };
 
 #endif
