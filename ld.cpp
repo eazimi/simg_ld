@@ -94,3 +94,43 @@ unsigned long LD::map_elf_interpreter_load_segment(void* startAddr, int fd, Elf6
 
   return (unsigned long)base;
 }
+
+void* LD::load_elf_interpreter(void* startAddr, const char* elf_interpreter, DynObjInfo& info)
+{
+  int ld_so_fd = open(elf_interpreter, O_RDONLY);
+  assert(ld_so_fd != -1);
+
+  char e_ident[EI_NIDENT];
+  int rc;
+
+  rc = read(ld_so_fd, e_ident, sizeof(e_ident));
+  assert(rc == sizeof(e_ident));
+  assert(strncmp(e_ident, ELFMAG, sizeof(ELFMAG) - 1) == 0);
+
+  // FIXME:  Add support for 32-bit ELF later
+  assert(e_ident[EI_CLASS] == ELFCLASS64);
+
+  // Reset fd to beginning and parse file header
+  lseek(ld_so_fd, 0, SEEK_SET);
+  Elf64_Ehdr elf_hdr;
+  rc = read(ld_so_fd, &elf_hdr, sizeof(elf_hdr));
+  assert(rc == sizeof(elf_hdr));
+
+  // Find ELF interpreter
+  int phoff = elf_hdr.e_phoff;
+  lseek(ld_so_fd, phoff, SEEK_SET);
+
+  Elf64_Phdr* phdr;
+  Elf64_Ehdr* ehdr = &elf_hdr;
+  ssize_t sz       = ehdr->e_phnum * sizeof(Elf64_Phdr);
+  phdr             = (Elf64_Phdr*)alloca(sz);
+
+  if (read(ld_so_fd, phdr, sz) != sz)
+    DLOG(ERROR, "can't read program header");
+
+  unsigned long baseAddr = map_elf_interpreter_load_segment(startAddr, ld_so_fd, ehdr, phdr);
+
+  info.set_phnum(elf_hdr.e_phnum);
+  info.set_phdr((VA)baseAddr + elf_hdr.e_phoff);
+  return (void*)baseAddr;
+}
