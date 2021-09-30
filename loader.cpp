@@ -1,6 +1,6 @@
 #include "loader.h"
-#include "stack.h"
-#include "heap.hpp"
+// #include "stack.h"
+// #include "heap.hpp"
 
 int Loader::init(const char** argv, pair<int, int>& param_count)
 {
@@ -15,13 +15,9 @@ int Loader::init(const char** argv, pair<int, int>& param_count)
   _parent_pid = getpid();
 
   // reserve some 2 GB in the address space, lock remained free areas
-  write_mmapped_ranges("before_reserve", 00000);
-  reserve_memory_region();
-  write_mmapped_ranges("after_reserve", 00000);
-  hide_free_memory_regions();
-  write_mmapped_ranges("after_hide", 00000);
-  release_reserved_memory_region();
-  write_mmapped_ranges("after_release_reserved", 00000);
+  write_mmapped_ranges("before_reserve", 0);
+  vm_->reserve_mem_space(GB2);
+  write_mmapped_ranges("after_reserve", 0);
 
   return param_index;
 }
@@ -188,9 +184,8 @@ void Loader::run_rtld(const char* ldname, int param_index, int param_count, int 
 
   // Create new stack region to be used by RTLD
   unique_ptr<Stack> stack(new Stack());
-  void* stackStartAddr = (void*)((unsigned long)g_range_->start + GB1);
-  void* newStack = stack->createNewStack(ldso, stackStartAddr, param_index, param_count, socket_id);
-
+  void* newStack = stack->createNewStack(ldso, vm_->getStartAddr(), param_index, param_count, socket_id);
+  cout << "stack addr: " << std::hex << vm_->getStartAddr() << endl;
   if (!newStack) {
     DLOG(ERROR, "Error creating new stack for RTLD. Exiting...\n");
     exit(-1);
@@ -198,7 +193,8 @@ void Loader::run_rtld(const char* ldname, int param_index, int param_count, int 
 
   // Create new heap region to be used by RTLD
   unique_ptr<Heap> heap(new Heap());
-  void* heapStartAddr = (void*)((unsigned long)g_range_->start + MB1500);
+  void* heapStartAddr = (void*)((unsigned long)vm_->getStartAddr() + GB1);
+  cout << "heap addr: " << std::hex << heapStartAddr << endl;
   void* newHeap = heap->createNewHeap(heapStartAddr);
   if (!newHeap) {
     DLOG(ERROR, "Error creating new heap for RTLD. Exiting...\n");

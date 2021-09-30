@@ -30,6 +30,7 @@ constexpr unsigned MESSAGE_LENGTH = 512;
 
 #define GB1 0x40000000
 #define MB1500 0x60000000
+#define GB2 0x80000000
 #define GB3 0xc0000000
 
 // Logging levels

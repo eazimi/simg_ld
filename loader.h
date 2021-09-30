@@ -1,16 +1,22 @@
 #ifndef LOADER_H
 #define LOADER_H
 
-#include "loader_global_funcs.hpp"
 #include <list>
+#include "loader_global_funcs.hpp"
+#include "user_space.h"
 
 using namespace std;
 
 class Loader {
 public:
-  explicit Loader() { g_range_ = std::make_unique<MemoryArea_t>(); args = make_unique<CMD_Args>(); }
+  explicit Loader()
+  {
+    g_range_ = std::make_unique<MemoryArea_t>();
+    args     = make_unique<CMD_Args>();
+    vm_ = make_unique<user_space>();
+  }
   void run(const char** argv);
-  unique_ptr<CMD_Args> args; 
+  unique_ptr<CMD_Args> args;
 
 private:
   int init(const char** argv, pair<int, int>& param_count);
@@ -30,6 +36,7 @@ private:
   unique_ptr<SyncProc> sync_proc_;
   std::list<pid_t> procs_;
   std::list<int> sockets_; 
+  unique_ptr<user_space> vm_;
 };
 
 #endif
