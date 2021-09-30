@@ -134,3 +134,14 @@ void* LD::load_elf_interpreter(void* startAddr, const char* elf_interpreter, Dyn
   info.set_phdr((VA)baseAddr + elf_hdr.e_phoff);
   return (void*)baseAddr;
 }
+
+DynObjInfo LD::load_lsdo(void* startAddr, const char* ld_name)
+{
+  Elf64_Addr cmd_entry = get_interpreter_entry(ld_name);
+  DynObjInfo info;
+  auto baseAddr   = load_elf_interpreter(startAddr, ld_name, info);
+  auto entryPoint = (void*)((unsigned long)baseAddr + (unsigned long)cmd_entry);
+  info.set_base_addr(baseAddr);
+  info.set_entry_point(entryPoint);
+  return info;
+}
