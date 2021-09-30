@@ -1,6 +1,4 @@
 #include "loader.h"
-// #include "stack.h"
-// #include "heap.hpp"
 
 int Loader::init(const char** argv, pair<int, int>& param_count)
 {
@@ -183,8 +181,7 @@ void Loader::run_rtld(const char* ldname, int param_index, int param_count, int 
   }
 
   // Create new stack region to be used by RTLD
-  unique_ptr<Stack> stack(new Stack());
-  void* newStack = stack->createNewStack(ldso, vm_->getStartAddr(), param_index, param_count, socket_id);
+  void* newStack = vm_->createNewStack(ldso, vm_->getStartAddr(), param_index, param_count, socket_id);
   cout << "stack addr: " << std::hex << vm_->getStartAddr() << endl;
   if (!newStack) {
     DLOG(ERROR, "Error creating new stack for RTLD. Exiting...\n");
@@ -192,10 +189,9 @@ void Loader::run_rtld(const char* ldname, int param_index, int param_count, int 
   }
 
   // Create new heap region to be used by RTLD
-  unique_ptr<Heap> heap(new Heap());
   void* heapStartAddr = (void*)((unsigned long)vm_->getStartAddr() + GB1);
   cout << "heap addr: " << std::hex << heapStartAddr << endl;
-  void* newHeap = heap->createNewHeap(heapStartAddr);
+  void* newHeap = vm_->createNewHeap(heapStartAddr);
   if (!newHeap) {
     DLOG(ERROR, "Error creating new heap for RTLD. Exiting...\n");
     exit(-1);
