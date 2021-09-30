@@ -7,8 +7,8 @@ class LD {
 private:
   Elf64_Addr get_interpreter_entry(const char* ld_name);
   DynObjInfo load_lsdo(void* startAddr, const char* ld_name);
-  unsigned long map_elf_interpreter_load_segment(void* startAddr, int fd, Elf64_Ehdr* ehdr, Elf64_Phdr* phdr);
-  void* load_elf_interpreter(void* startAddr, const char* elf_interpreter, DynObjInfo& info);
+  unsigned long loadSegment(void* startAddr, int fd, Elf64_Ehdr* ehdr, Elf64_Phdr* phdr);
+  void* loadInterpreter(void* startAddr, const char* elf_interpreter, DynObjInfo& info);
 
 public:
   explicit LD() = default;

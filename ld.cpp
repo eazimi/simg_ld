@@ -26,7 +26,7 @@ Elf64_Addr LD::get_interpreter_entry(const char* ld_name)
   return elf_hdr.e_entry;
 }
 
-unsigned long LD::map_elf_interpreter_load_segment(void* startAddr, int fd, Elf64_Ehdr* ehdr, Elf64_Phdr* phdr)
+unsigned long LD::loadSegment(void* startAddr, int fd, Elf64_Ehdr* ehdr, Elf64_Phdr* phdr)
 {
   unsigned long minva, maxva;
   Elf64_Phdr* iter;
@@ -95,7 +95,7 @@ unsigned long LD::map_elf_interpreter_load_segment(void* startAddr, int fd, Elf6
   return (unsigned long)base;
 }
 
-void* LD::load_elf_interpreter(void* startAddr, const char* elf_interpreter, DynObjInfo& info)
+void* LD::loadInterpreter(void* startAddr, const char* elf_interpreter, DynObjInfo& info)
 {
   int ld_so_fd = open(elf_interpreter, O_RDONLY);
   assert(ld_so_fd != -1);
@@ -128,7 +128,7 @@ void* LD::load_elf_interpreter(void* startAddr, const char* elf_interpreter, Dyn
   if (read(ld_so_fd, phdr, sz) != sz)
     DLOG(ERROR, "can't read program header");
 
-  unsigned long baseAddr = map_elf_interpreter_load_segment(startAddr, ld_so_fd, ehdr, phdr);
+  unsigned long baseAddr = loadSegment(startAddr, ld_so_fd, ehdr, phdr);
 
   info.set_phnum(elf_hdr.e_phnum);
   info.set_phdr((VA)baseAddr + elf_hdr.e_phoff);
@@ -139,7 +139,7 @@ DynObjInfo LD::load_lsdo(void* startAddr, const char* ld_name)
 {
   Elf64_Addr cmd_entry = get_interpreter_entry(ld_name);
   DynObjInfo info;
-  auto baseAddr   = load_elf_interpreter(startAddr, ld_name, info);
+  auto baseAddr   = loadInterpreter(startAddr, ld_name, info);
   auto entryPoint = (void*)((unsigned long)baseAddr + (unsigned long)cmd_entry);
   info.set_base_addr(baseAddr);
   info.set_entry_point(entryPoint);
