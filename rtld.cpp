@@ -12,7 +12,6 @@
 
 RTLD::RTLD()
 {
-  vm_             = make_unique<user_space>();
   ld_             = make_unique<LD>();
   cmdline_params_ = make_unique<cmdline_params>();
   sync_proc_      = make_unique<SyncProc>();
