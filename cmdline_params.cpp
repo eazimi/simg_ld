@@ -28,5 +28,7 @@ int cmdline_params::process_argv(char** argv, pair<int, int>& param_count)
     return -1;
   param_count.first  = argv1.size(); // child process
   param_count.second = argv2.size(); // parent process
+  apps_.push_back(argv1);
+  apps_.push_back(argv2);
   return ++index;
 }
