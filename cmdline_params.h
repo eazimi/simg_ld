@@ -14,7 +14,7 @@ private:
 
 public:
   explicit cmdline_params() = default;
-  int process_argv(char** argv, pair<int, int>& param_count);
+  int process_argv(char** argv);
   inline int getAppCount() const { return apps_.size(); } 
   inline vector<string> getAppParams(int index) const { return apps_[index]; } 
   inline int getAppParamsCount(int index) const { return apps_[index].size(); } 

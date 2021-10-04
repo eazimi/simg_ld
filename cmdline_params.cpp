@@ -1,7 +1,7 @@
 #include "cmdline_params.h"
 
 // returns the parent's parameters start index in the command line parameters
-int cmdline_params::process_argv(char** argv, pair<int, int>& param_count)
+int cmdline_params::process_argv(char** argv)
 {
   vector<string> argv1, argv2;
   auto* args          = &argv1;
@@ -26,9 +26,7 @@ int cmdline_params::process_argv(char** argv, pair<int, int>& param_count)
   // todo: check for more condition, like app's parameter count
   if (!separatorFound || argv1.empty() || argv2.empty())
     return -1;
-  param_count.first  = argv1.size(); // child process
-  param_count.second = argv2.size(); // parent process
-  apps_.push_back(argv1);
-  apps_.push_back(argv2);
+  apps_.push_back(argv1); // child
+  apps_.push_back(argv2); // parent
   return ++index;
 }

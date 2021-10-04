@@ -16,6 +16,7 @@ private:
   unique_ptr<SyncProc> sync_proc_;
   // template<typename T>
   // void run_rtld(int param_index, int param_count, T p);
+  void runApp(int socket, int paramsCount);
 
 public:
   explicit RTLD();
