@@ -10,8 +10,6 @@
 
 using namespace std;
 
-class Loader;
-
 class SyncProc {
 private:
   unique_ptr<event_base, decltype(&event_base_free)> base_{nullptr, &event_base_free};
@@ -28,7 +26,7 @@ public:
   SyncProc& operator=(SyncProc const&) = delete;
   SyncProc& operator=(SyncProc&&) = delete;
 
-  void start(void (*handler)(int, short, void*), Loader *loader, list<int> sockets);
+  void start(void (*handler)(int, short, void*), void *obj, list<int> sockets);
   void dispatch() const;
   void break_loop() const;
 
