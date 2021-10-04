@@ -1,20 +1,24 @@
 #include "rtld.h"
-#include <assert.h>
-#include <sys/socket.h>
-#include <signal.h>
-#include <fcntl.h>
-#include <sys/prctl.h>
 #include "global.hpp"
+#include <algorithm>
+#include <assert.h>
+#include <fcntl.h>
+#include <signal.h>
+#include <sys/prctl.h>
+#include <sys/ptrace.h>
+#include <sys/socket.h>
+#include <sys/types.h>
+#include <sys/wait.h>
 
 RTLD::RTLD()
 {
-  vm_ = make_unique<user_space>();
-  ld_ = make_unique<LD>();
+  vm_             = make_unique<user_space>();
+  ld_             = make_unique<LD>();
   cmdline_params_ = make_unique<cmdline_params>();
-  sync_proc_ = make_unique<SyncProc>(); 
+  sync_proc_      = make_unique<SyncProc>();
 }
 
-// template <typename T> 
+// template <typename T>
 // void RTLD::run_rtld(int param_index, int param_count, T p)
 // {
 
@@ -45,8 +49,6 @@ void RTLD::runAll(char** argv)
     exit(-1);
   }
 
-  std::list<int> allSockets;
-
   auto childCount = cmdline_params_->getAppCount();
   for (auto i = 0; i < childCount; i++) {
     // Create an AF_LOCAL socketpair used for exchanging messages
@@ -65,7 +67,7 @@ void RTLD::runAll(char** argv)
       runApp(sockets[0], paramsCount);
     } else // parent
     {
-      // procs_.push_back(pid);
+      allApps.push_back(pid);
       ::close(sockets[0]);
       allSockets.push_back(sockets[1]);
     }
@@ -88,12 +90,67 @@ void RTLD::runAll(char** argv)
         } else if (event == EV_SIGNAL) {
           if (sig == SIGCHLD) {
             cout << "parent: EV_SIGNAL" << endl;
-            // rtld->handle_waitpid();
+            rtld->handle_waitpid();
           }
         } else {
           DLOG(ERROR, "Unexpected event\n");
           exit(-1);
         }
       },
-      this, allSockets);  
+      this, allSockets);
+}
+
+void RTLD::handle_waitpid()
+{
+  int status;
+  pid_t pid;
+  while ((pid = waitpid(-1, &status, WNOHANG)) != 0) {
+    if (pid == -1) {
+      if (errno == ECHILD) {
+        // No more children:
+        assert((allApps.size() == 0) && "Inconsistent state");
+        break;
+      } else {
+        DLOG(ERROR, "Could not wait for pid\n");
+        exit(-1);
+      }
+    }
+
+    auto it = find(allApps.begin(), allApps.end(), pid);
+    if (it == allApps.end()) {
+      DLOG(ERROR, "Child process not found\n");
+      return;
+    } else {
+      // From PTRACE_O_TRACEEXIT:
+#ifdef __linux__
+      if (status >> 8 == (SIGTRAP | (PTRACE_EVENT_EXIT << 8))) {
+        assert((ptrace(PTRACE_GETEVENTMSG, pid, 0, &status) != -1) && "Could not get exit status");
+        if (WIFSIGNALED(status)) {
+          DLOG(ERROR, "CRASH IN THE PROGRAM, %i\n", status);
+          for (auto p : allApps)
+            kill(p, SIGKILL);
+          exit(-1);
+        }
+      }
+#endif
+
+      // We don't care about signals, just reinject them:
+      if (WIFSTOPPED(status)) {
+        // DLOG(INFO, "Stopped with signal %i\n", (int)WSTOPSIG(status));
+        errno = 0;
+#ifdef __linux__
+        ptrace(PTRACE_CONT, pid, 0, WSTOPSIG(status));
+#endif
+        assert(errno == 0 && "Could not PTRACE_CONT");
+      } else if (WIFSIGNALED(status)) {
+        DLOG(ERROR, "CRASH IN THE PROGRAM, %i\n", status);
+        for (auto process : allApps)
+          kill(process, SIGKILL);
+        exit(-1);
+      } else if (WIFEXITED(status)) {
+        DLOG(INFO, "Child process is over\n");
+        allApps.erase(it);
+      }
+    }
+  }
 }
