@@ -9,16 +9,16 @@ set(CMAKE_BUILD_TYPE Debug)
 
 project(simg_ld LANGUAGES CXX C)
 
-add_executable(app_loader 
-    app_loader_main.cpp
-    app_loader.h
-    app_loader.cpp
+add_executable(app
+    app_main.cpp
+    app.h
+    app.cpp
     global.hpp
     channel.hpp
     channel.cpp)
 
-add_executable(simg_ld 
-    simg_ld_main.cpp
+add_executable(simgld 
+    simgld_main.cpp
     loader.cpp
     loader.h
     dyn_obj_info.hpp
@@ -37,11 +37,11 @@ add_executable(simg_ld
     heap.hpp
     user_space.h
     user_space.cpp
-    ld.h
-    ld.cpp
+    app_loader.h
+    app_loader.cpp
     rtld.h
     rtld.cpp
     cmdline_params.h
     cmdline_params.cpp
     )
-target_link_libraries(simg_ld ${CMAKE_SOURCE_DIR}/libevent_core.a -static)
+target_link_libraries(simgld ${CMAKE_SOURCE_DIR}/libevent_core.a -static)

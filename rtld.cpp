@@ -12,7 +12,7 @@
 
 RTLD::RTLD()
 {
-  ld_             = make_unique<LD>();
+  ld_             = make_unique<AppLoader>();
   cmdline_params_ = make_unique<cmdline_params>();
   sync_proc_      = make_unique<SyncProc>();
 }
