@@ -41,5 +41,7 @@ add_executable(simg_ld
     ld.cpp
     rtld.h
     rtld.cpp
+    cmdline_params.h
+    cmdline_params.cpp
     )
 target_link_libraries(simg_ld ${CMAKE_SOURCE_DIR}/libevent_core.a -static)
