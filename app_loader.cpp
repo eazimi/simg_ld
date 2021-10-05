@@ -1,9 +1,14 @@
 #include "app_loader.h"
-#include <fcntl.h>
-#include <unistd.h>
+#include "global.hpp"
 #include <assert.h>
 #include <cstring>
-#include "global.hpp"
+#include <fcntl.h>
+#include <unistd.h>
+
+AppLoader::AppLoader()
+{
+  user_space_ = make_unique<user_space>();
+}
 
 Elf64_Addr AppLoader::get_interpreter_entry(const char* ld_name)
 {
