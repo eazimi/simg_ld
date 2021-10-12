@@ -27,6 +27,11 @@ void ParentProc::run(char** argv)
     exit(-1);
   }
 
+  // reserve some 2 GB in the address space, lock remained free areas
+  write_mmapped_ranges("before_reserve", 0);
+  appLoader_->reserveMemSpace(GB2);
+  write_mmapped_ranges("after_reserve", 0);
+
   auto appCount = cmdLineParams_->getAppCount();
   for (auto i = 0; i < appCount; i++) {
     // Create an AF_LOCAL socketpair used for exchanging messages
@@ -42,7 +47,6 @@ void ParentProc::run(char** argv)
     {
       ::close(sockets[1]);
       auto paramsCount = cmdLineParams_->getAppParamsCount(i);
-      // runApp(sockets[0], paramsCount);
 
 #ifdef __linux__
       // Make sure we do not outlive our parent
@@ -56,7 +60,7 @@ void ParentProc::run(char** argv)
       assert((fdflags != -1 && fcntl(sockets[0], F_SETFD, fdflags & ~FD_CLOEXEC) != -1) &&
              "Could not remove CLOEXEC for socket");
 
-      appLoader_->runRtld(param_index, paramsCount, sockets[0]);
+      appLoader_->runRtld(0, paramsCount, sockets[0]);
     } else // parent
     {
       allApps.push_back(pid);
@@ -71,17 +75,15 @@ void ParentProc::run(char** argv)
       [](evutil_socket_t sig, short event, void* obj) {
         auto mc = static_cast<ParentProc*>(obj);
         if (event == EV_READ) {
-          cout << "parent: EV_READ" << endl;
-          // std::array<char, MESSAGE_LENGTH> buffer;
-          // ssize_t size = rtld->sync_proc_->get_channel(sig).receive(buffer.data(), buffer.size(), false);
-          // if (size == -1 && errno != EAGAIN) {
-          //   DLOG(ERROR, "%s\n", strerror(errno));
-          //   exit(-1);
-          // }
-          // rtld->handle_message(sig, buffer.data());
+          std::array<char, MESSAGE_LENGTH> buffer;
+          ssize_t size = mc->syncProc_->get_channel(sig).receive(buffer.data(), buffer.size(), false);
+          if (size == -1 && errno != EAGAIN) {
+            DLOG(ERROR, "%s\n", strerror(errno));
+            exit(-1);
+          }
+          mc->handle_message(sig, buffer.data());
         } else if (event == EV_SIGNAL) {
           if (sig == SIGCHLD) {
-            cout << "parent: EV_SIGNAL" << endl;
             mc->handle_waitpid();
           }
         } else {
@@ -90,6 +92,30 @@ void ParentProc::run(char** argv)
         }
       },
       this, allSockets);
+}
+
+void ParentProc::handle_message(int socket, void* buffer)
+{
+  vector<string> str_messages{"NONE", "READY", "CONTINUE", "FINISH", "DONE"};
+  s_message_t base_message;
+  memcpy(&base_message, static_cast<char*>(buffer), sizeof(base_message));
+  auto str_message_type = str_messages[static_cast<int>(base_message.type)];
+  DLOG(INFO, "parent: child %d sent a %s message, socket = %d\n", base_message.pid, str_message_type.c_str(), socket);
+
+  base_message.pid = getpid();
+  bool run_app     = false;
+  if (base_message.type == MessageType::READY) {
+    base_message.type = MessageType::CONTINUE;
+  } else if (base_message.type == MessageType::FINISH) {
+    base_message.type = MessageType::DONE;
+    run_app           = true;
+  }
+  syncProc_->get_channel(socket).send(base_message);
+  if (run_app) { // 0: ldname, 1: param_index, 2: param_count
+    // run_rtld(args->ld_name(), args->param_index(), args->param_count(1));
+  }
+  // if (!sync_proc->handle_message(buffer.data(), size))
+  //   sync_proc->break_loop();
 }
 
 void ParentProc::handle_waitpid()

@@ -14,6 +14,7 @@ private:
   unique_ptr<cmdLineParams> cmdLineParams_;
   unique_ptr<AppLoader> appLoader_;
   unique_ptr<SyncProc> syncProc_;
+  void handle_message(int socket, void* buffer);
   void handle_waitpid();
 
 public:

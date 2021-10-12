@@ -1,10 +1,8 @@
-#include "loader.h"
-#include <iostream>
-#include <stdio.h>
+#include "parent_proc.h"
 
 int main(int argc, char** argv, char** env)
 {
-  std::unique_ptr<Loader> loader = std::make_unique<Loader>();
-  loader->run((const char**)argv);
+  std::unique_ptr<ParentProc> mc = std::make_unique<ParentProc>();
+  mc->run(argv);
   return 0;
 }
