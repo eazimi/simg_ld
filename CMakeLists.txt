@@ -39,8 +39,8 @@ add_executable(simgld
     user_space.cpp
     app_loader.h
     app_loader.cpp
-    rtld.h
-    rtld.cpp
+    parent_proc.h
+    parent_proc.cpp
     cmdline_params.h
     cmdline_params.cpp
     )

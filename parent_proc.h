@@ -1,5 +1,5 @@
-#ifndef RTLD_H
-#define RTLD_H
+#ifndef PARENTPROC_H
+#define PARENTPROC_H
 
 #include "app_loader.h"
 #include "cmdline_params.h"

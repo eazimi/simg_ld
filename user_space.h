@@ -7,7 +7,7 @@
 
 using namespace std;
 
-class user_space {
+class UserSpace {
 private:
   unique_ptr<Stack> stack_;
   unique_ptr<Heap> heap_;
@@ -15,7 +15,7 @@ private:
   unsigned long size_ = 0;
 
 public:
-  explicit user_space();
+  explicit UserSpace();
   void* getStackEnd() const;
   void* createNewHeap(void* heapStartAddr) const;
   void* createNewStack(const DynObjInfo& info, void* stackStartAddr, int param_index, int param_count,

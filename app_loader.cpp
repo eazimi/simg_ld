@@ -7,7 +7,7 @@
 
 AppLoader::AppLoader()
 {
-  user_space_ = make_unique<user_space>();
+  userSpace_ = make_unique<UserSpace>();
 }
 
 Elf64_Addr AppLoader::get_interpreter_entry(const char* ld_name)
@@ -156,7 +156,7 @@ DynObjInfo AppLoader::load_lsdo(void* startAddr, const char* ld_name)
 void AppLoader::runRtld(int param_index, int param_count, int socket_id)
 {
   int rc = -1;
-  auto startAddr = user_space_->getStartAddr();
+  auto startAddr = userSpace_->getStartAddr();
   // Load RTLD (ld.so)
   DynObjInfo ldso = load_lsdo(startAddr, (char*)LD_NAME);
 
@@ -168,7 +168,7 @@ void AppLoader::runRtld(int param_index, int param_count, int socket_id)
 
   // Create new stack region to be used by RTLD
   auto stackStartAddr = (void*)((unsigned long)startAddr + GB1);
-  void* newStack = user_space_->createNewStack(ldso, stackStartAddr, param_index, param_count, socket_id);
+  void* newStack = userSpace_->createNewStack(ldso, stackStartAddr, param_index, param_count, socket_id);
   cout << "stack addr: " << std::hex << stackStartAddr << endl;
   if (!newStack) {
     DLOG(ERROR, "Error creating new stack for RTLD. Exiting...\n");
@@ -178,7 +178,7 @@ void AppLoader::runRtld(int param_index, int param_count, int socket_id)
   // Create new heap region to be used by RTLD
   void* heapStartAddr = (void*)((unsigned long)startAddr + GB2);
   cout << "heap addr: " << std::hex << heapStartAddr << endl;
-  void* newHeap = user_space_->createNewHeap(heapStartAddr);
+  void* newHeap = userSpace_->createNewHeap(heapStartAddr);
   if (!newHeap) {
     DLOG(ERROR, "Error creating new heap for RTLD. Exiting...\n");
     exit(-1);

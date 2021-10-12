@@ -13,7 +13,7 @@ public:
   {
     g_range_ = std::make_unique<MemoryArea_t>();
     args     = make_unique<CMD_Args>();
-    vm_ = make_unique<user_space>();
+    vm_ = make_unique<UserSpace>();
   }
   void run(const char** argv);
   unique_ptr<CMD_Args> args;
@@ -36,7 +36,8 @@ private:
   unique_ptr<SyncProc> sync_proc_;
   std::list<pid_t> procs_;
   std::list<int> sockets_; 
-  unique_ptr<user_space> vm_;
+  unique_ptr<UserSpace> vm_;
+
 };
 
 #endif

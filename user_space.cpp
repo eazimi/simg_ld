@@ -3,29 +3,29 @@
 #include <tuple>
 #include "global.hpp"
 
-user_space::user_space()
+UserSpace::UserSpace()
 {
   stack_ = make_unique<Stack>();
   heap_  = make_unique<Heap>();
 }
 
-void* user_space::getStackEnd() const
+void* UserSpace::getStackEnd() const
 {
   return stack_->getStackEnd();
 }
 
-void* user_space::createNewHeap(void* heapStartAddr) const
+void* UserSpace::createNewHeap(void* heapStartAddr) const
 {
   return heap_->createNewHeap(heapStartAddr);
 }
 
-void* user_space::createNewStack(const DynObjInfo& info, void* stackStartAddr, int param_index, int param_count,
+void* UserSpace::createNewStack(const DynObjInfo& info, void* stackStartAddr, int param_index, int param_count,
                                 int socket_id) const
 {
   return stack_->createNewStack(info, stackStartAddr, param_index, param_count, socket_id);
 }
 
-void user_space::reserve_mem_space(unsigned long size)
+void UserSpace::reserve_mem_space(unsigned long size)
 {
   Area area;
   bool found = false;
@@ -61,7 +61,7 @@ void user_space::reserve_mem_space(unsigned long size)
   cout << "reserved addr: " << std::hex << startAddr << endl;
 }
 
-void user_space::mmap_all_free_spaces()
+void UserSpace::mmap_all_free_spaces()
 {
   std::vector<pair<void*, void*>> mmaps_range {}; // start and end of a range
   Area area;
