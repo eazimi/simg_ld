@@ -8,6 +8,7 @@ set(CMAKE_COLOR_MAKEFILE ON)
 set(CMAKE_BUILD_TYPE Debug)
 
 project(simg_ld LANGUAGES CXX C)
+find_library(LIBEVENT_LIBRARY NAMES event)
 
 add_executable(app
     app_main.cpp
@@ -17,8 +18,8 @@ add_executable(app
     channel.hpp
     channel.cpp)
 
-add_executable(simgld 
-    simgld_main.cpp
+add_executable(parentProc 
+    parent_proc_main.cpp
     dyn_obj_info.hpp
     channel.hpp
     channel.cpp
@@ -40,4 +41,16 @@ add_executable(simgld
     cmdline_params.h
     cmdline_params.cpp
     )
-target_link_libraries(simgld ${CMAKE_SOURCE_DIR}/libevent_core.a -static)
+target_link_libraries(parentProc ${LIBEVENT_LIBRARY})    
+
+add_executable(simgld
+    stack.h
+    stack.cpp
+    heap.hpp
+    user_space.h
+    user_space.cpp
+    app_loader.h
+    app_loader.cpp
+    main.cpp
+)
+target_link_libraries(simgld -static)
