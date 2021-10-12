@@ -1,7 +1,7 @@
 #include "cmdline_params.h"
 
 // returns the parent's parameters start index in the command line parameters
-int cmdline_params::process_argv(char** argv)
+int cmdLineParams::process_argv(char** argv)
 {
   vector<string> argv1, argv2;
   auto* args          = &argv1;

@@ -8,12 +8,12 @@
 
 using namespace std;
 
-class cmdline_params {
+class cmdLineParams {
 private:
   vector<vector<string>> apps_;
 
 public:
-  explicit cmdline_params() = default;
+  explicit cmdLineParams() = default;
   int process_argv(char** argv);
   inline int getAppCount() const { return apps_.size(); } 
   inline vector<string> getAppParams(int index) const { return apps_[index]; } 

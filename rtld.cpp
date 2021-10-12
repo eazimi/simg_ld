@@ -10,37 +10,16 @@
 #include <sys/types.h>
 #include <sys/wait.h>
 
-RTLD::RTLD()
+ParentProc::ParentProc()
 {
-  ld_             = make_unique<AppLoader>();
-  cmdline_params_ = make_unique<cmdline_params>();
-  sync_proc_      = make_unique<SyncProc>();
+  appLoader_     = make_unique<AppLoader>();
+  cmdLineParams_ = make_unique<cmdLineParams>();
+  syncProc_      = make_unique<SyncProc>();
 }
 
-// template <typename T>
-// void RTLD::run_rtld(int param_index, int param_count, T p)
-// {
-
-// }
-
-void RTLD::runApp(int socket, int paramsCount)
+void ParentProc::run(char** argv)
 {
-#ifdef __linux__
-  // Make sure we do not outlive our parent
-  sigset_t mask;
-  sigemptyset(&mask);
-  assert(sigprocmask(SIG_SETMASK, &mask, nullptr) >= 0 && "Could not unblock signals");
-  assert(prctl(PR_SET_PDEATHSIG, SIGHUP) == 0 && "Could not PR_SET_PDEATHSIG");
-#endif
-
-  int fdflags = fcntl(socket, F_GETFD, 0);
-  assert((fdflags != -1 && fcntl(socket, F_SETFD, fdflags & ~FD_CLOEXEC) != -1) &&
-         "Could not remove CLOEXEC for socket");
-}
-
-void RTLD::runAll(char** argv)
-{
-  auto param_index = cmdline_params_->process_argv(argv);
+  auto param_index = cmdLineParams_->process_argv(argv);
   if (param_index == -1) {
     DLOG(ERROR, "Command line parameters are invalid\n");
     DLOG(ERROR, "Usage: ./simg_ld /PATH/TO/APP1 [APP1_PARAMS] -- /PATH/TO/APP2 [APP2_PARAMS]\n");
@@ -48,8 +27,8 @@ void RTLD::runAll(char** argv)
     exit(-1);
   }
 
-  auto childCount = cmdline_params_->getAppCount();
-  for (auto i = 0; i < childCount; i++) {
+  auto appCount = cmdLineParams_->getAppCount();
+  for (auto i = 0; i < appCount; i++) {
     // Create an AF_LOCAL socketpair used for exchanging messages
     // between the model-checker process (ourselves) and the model-checked
     // process:
@@ -62,8 +41,22 @@ void RTLD::runAll(char** argv)
     if (pid == 0) // child
     {
       ::close(sockets[1]);
-      auto paramsCount = cmdline_params_->getAppParamsCount(i);
-      runApp(sockets[0], paramsCount);
+      auto paramsCount = cmdLineParams_->getAppParamsCount(i);
+      // runApp(sockets[0], paramsCount);
+
+#ifdef __linux__
+      // Make sure we do not outlive our parent
+      sigset_t mask;
+      sigemptyset(&mask);
+      assert(sigprocmask(SIG_SETMASK, &mask, nullptr) >= 0 && "Could not unblock signals");
+      assert(prctl(PR_SET_PDEATHSIG, SIGHUP) == 0 && "Could not PR_SET_PDEATHSIG");
+#endif
+
+      int fdflags = fcntl(sockets[0], F_GETFD, 0);
+      assert((fdflags != -1 && fcntl(sockets[0], F_SETFD, fdflags & ~FD_CLOEXEC) != -1) &&
+             "Could not remove CLOEXEC for socket");
+
+      appLoader_->runRtld(param_index, paramsCount, sockets[0]);
     } else // parent
     {
       allApps.push_back(pid);
@@ -73,10 +66,10 @@ void RTLD::runAll(char** argv)
   }
 
   // due to run_child_process(), child never reaches here
-  sync_proc_ = make_unique<SyncProc>();
-  sync_proc_->start(
+  syncProc_ = make_unique<SyncProc>();
+  syncProc_->start(
       [](evutil_socket_t sig, short event, void* obj) {
-        auto rtld = static_cast<RTLD*>(obj);
+        auto mc = static_cast<ParentProc*>(obj);
         if (event == EV_READ) {
           cout << "parent: EV_READ" << endl;
           // std::array<char, MESSAGE_LENGTH> buffer;
@@ -89,7 +82,7 @@ void RTLD::runAll(char** argv)
         } else if (event == EV_SIGNAL) {
           if (sig == SIGCHLD) {
             cout << "parent: EV_SIGNAL" << endl;
-            rtld->handle_waitpid();
+            mc->handle_waitpid();
           }
         } else {
           DLOG(ERROR, "Unexpected event\n");
@@ -99,7 +92,7 @@ void RTLD::runAll(char** argv)
       this, allSockets);
 }
 
-void RTLD::handle_waitpid()
+void ParentProc::handle_waitpid()
 {
   int status;
   pid_t pid;
