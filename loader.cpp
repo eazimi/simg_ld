@@ -55,6 +55,8 @@ void Loader::run(const char** argv)
     }
   }
 
+  write_mmapped_ranges("all_apps_runnig", 0); 
+
   // due to run_child_process(), child never reaches here
   sync_proc_ = make_unique<SyncProc>();
   sync_proc_->start(

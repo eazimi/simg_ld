@@ -57,6 +57,8 @@ void user_space::reserve_mem_space(unsigned long size)
 
   startAddr_ = spaceAddr;
   size_ = size;
+
+  cout << "reserved addr: " << std::hex << startAddr << endl;
 }
 
 void user_space::mmap_all_free_spaces()
