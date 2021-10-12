@@ -8,7 +8,6 @@ using namespace std;
 
 class Stack {
 private:
-  void* stack_end_ = nullptr;
   void getProcStatField(enum Procstat_t type, char* out, size_t len);
   void getStackRegion(Area* stack);
   void* getArgcAddr(const void* stackEnd) const;
@@ -22,7 +21,6 @@ private:
 
 public:
   explicit Stack();
-  inline void* getStackEnd() const { return stack_end_; }
   void* createNewStack(const DynObjInfo& info, void* stackStartAddr, int param_index, int param_count, int socket_id);
 };
 

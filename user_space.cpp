@@ -9,11 +9,6 @@ UserSpace::UserSpace()
   heap_  = make_unique<Heap>();
 }
 
-void* UserSpace::getStackEnd() const
-{
-  return stack_->getStackEnd();
-}
-
 void* UserSpace::createNewHeap(void* heapStartAddr) const
 {
   return heap_->createNewHeap(heapStartAddr);

@@ -16,7 +16,6 @@ private:
 
 public:
   explicit UserSpace();
-  void* getStackEnd() const;
   void* createNewHeap(void* heapStartAddr) const;
   void* createNewStack(const DynObjInfo& info, void* stackStartAddr, int param_index, int param_count,
                        int socket_id) const;

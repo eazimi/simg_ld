@@ -287,6 +287,5 @@ void* Stack::createNewStack(const DynObjInfo& info, void* stackStartAddr, int pa
   newStackEnd = deepCopyStack(newStack, stack.addr, stack.size, (void*)newStackEnd, (void*)origStackEnd, info,
                               param_index, param_count, socket_id);
 
-  stack_end_ = newStackEnd;
   return newStackEnd;
 }
