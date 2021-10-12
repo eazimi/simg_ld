@@ -19,16 +19,12 @@ add_executable(app
 
 add_executable(simgld 
     simgld_main.cpp
-    loader.cpp
-    loader.h
     dyn_obj_info.hpp
     channel.hpp
     channel.cpp
     global.hpp
-    loader_global_funcs.hpp
     sync_proc.hpp
     sync_proc.cpp
-    loader_headers.hpp
     cmd_args.hpp
     memory_map.h
     memory_map.cpp
