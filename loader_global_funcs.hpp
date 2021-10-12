@@ -3,22 +3,6 @@
 
 #include "loader_headers.hpp"
 
-static void run_child_process(int socket, const function<void()>& func)
-{
-#ifdef __linux__
-  // Make sure we do not outlive our parent
-  sigset_t mask;
-  sigemptyset(&mask);
-  assert(sigprocmask(SIG_SETMASK, &mask, nullptr) >= 0 && "Could not unblock signals");
-  assert(prctl(PR_SET_PDEATHSIG, SIGHUP) == 0 && "Could not PR_SET_PDEATHSIG");
-#endif
-
-  int fdflags = fcntl(socket, F_GETFD, 0);
-  assert((fdflags != -1 && fcntl(socket, F_SETFD, fdflags & ~FD_CLOEXEC) != -1) &&
-         "Could not remove CLOEXEC for socket");
-  func();
-}
-
 // returns the parent's parameters start index in the command line parameters
 static int process_argv(const char** argv, pair<int, int>& param_count)
 {
