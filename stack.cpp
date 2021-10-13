@@ -176,6 +176,59 @@ void* Stack::deepCopyStack(void* newStack, const void* origStack, size_t len, co
   return (void*)newArgcAddr;
 }
 
+// Creates a deep copy of the stack region pointed to be `origStack` at the
+// location pointed to be `newStack`. Returns the start-of-stack pointer
+// in the new stack region.
+void* Stack::deepCopyStack(void* newStack, const void* origStack, size_t len, const void* newStackEnd,
+                           const void* origStackEnd, const DynObjInfo& info) const
+{
+  // Return early if any pointer is NULL
+  if (!newStack || !origStack || !newStackEnd || !origStackEnd) {
+    return nullptr;
+  }
+
+  memcpy(newStack, origStack, len);
+
+  void* origArgcAddr   = (void*)getArgcAddr(origStackEnd);
+  int origArgc         = *(int*)origArgcAddr;
+  char** origArgv      = (char**)getArgvAddr(origStackEnd);
+  const char** origEnv = (const char**)getEnvAddr(origArgv, origArgc);
+
+  void* newArgcAddr     = (void*)getArgcAddr(newStackEnd);
+  int newArgc           = *(int*)newArgcAddr;
+  char** newArgv        = (char**)getArgvAddr(newStackEnd);
+  const char** newEnv   = (const char**)getEnvAddr(newArgv, newArgc);
+  ElfW(auxv_t)* newAuxv = getAuxvAddr(newEnv);
+
+  for (int i = 0; origArgv[i] != nullptr; i++) {
+    off_t argvDelta = (uintptr_t)origArgv[i] - (uintptr_t)origArgv;
+    newArgv[i]      = (char*)((uintptr_t)newArgv + (uintptr_t)argvDelta);
+  }
+  // strcpy(newArgv[0], app);
+
+  // cout << "main.cpp -> deepCopyStack(), printing parameters in orgiStack" << endl;
+  // for(auto i=0; newArgv[i] != nullptr; i++)
+  //   cout << i << ": " << origArgv[i] << endl;
+
+  // cout << "main.cpp -> deepCopyStack(), printing parameters in newStack" << endl;
+  // for(auto i=0; newArgv[i] != nullptr; i++)
+  //   cout << i << ": " << newArgv[i] << endl;
+
+  // Patch the env vector in the new stack
+  for (int i = 0; origEnv[i] != nullptr; i++) {
+    off_t envDelta = (uintptr_t)origEnv[i] - (uintptr_t)origEnv;
+    newEnv[i]      = (char*)((uintptr_t)newEnv + (uintptr_t)envDelta);
+  }
+
+  patchAuxv(newAuxv, info.get_phnum(), (uintptr_t)info.get_phdr(), (uintptr_t)info.get_entry_point());
+
+  // We clear out the rest of the new stack region just in case ...
+  memset(newStack, 0, (size_t)((uintptr_t)&newArgv[-2] - (uintptr_t)newStack));
+
+  // Return the start of new stack.
+  return (void*)newArgcAddr;
+}
+
 void* Stack::getArgcAddr(const void* stackEnd) const
 {
   return (void*)((uintptr_t)(stackEnd) + sizeof(uintptr_t));
@@ -286,6 +339,27 @@ void* Stack::createNewStack(const DynObjInfo& info, void* stackStartAddr, int pa
   // 2. Deep copy stack
   newStackEnd = deepCopyStack(newStack, stack.addr, stack.size, (void*)newStackEnd, (void*)origStackEnd, info,
                               param_index, param_count, socket_id);
+
+  return newStackEnd;
+}
+
+void* Stack::createNewStack(const DynObjInfo& info, void* stackStartAddr)
+{
+  Area stack;
+  char stackEndStr[20] = {0};
+  getStackRegion(&stack);
+  void* newStack =
+      mmapWrapper(stackStartAddr, stack.size, PROT_READ | PROT_WRITE, MAP_GROWSDOWN | MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+  if (newStack == MAP_FAILED) {
+    DLOG(ERROR, "Failed to mmap new stack region: %s\n", strerror(errno));
+    return nullptr;
+  }
+  getProcStatField(STARTSTACK, stackEndStr, sizeof stackEndStr);
+  unsigned long origStackEnd    = atol(stackEndStr) - sizeof(unsigned long);
+  unsigned long origStackOffset = origStackEnd - (unsigned long)stack.addr;
+  unsigned long newStackOffset  = origStackOffset;
+  void* newStackEnd             = (void*)((unsigned long)newStack + newStackOffset);
+  newStackEnd = deepCopyStack(newStack, stack.addr, stack.size, (void*)newStackEnd, (void*)origStackEnd, info);
 
   return newStackEnd;
 }

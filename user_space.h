@@ -19,6 +19,7 @@ public:
   void* createNewHeap(void* heapStartAddr) const;
   void* createNewStack(const DynObjInfo& info, void* stackStartAddr, int param_index, int param_count,
                        int socket_id) const;
+  void* createNewStack(const DynObjInfo& info, void* stackStartAddr) const;
   void reserve_mem_space(unsigned long size);
   void mmap_all_free_spaces();  
   inline void* getStartAddr() const { return startAddr_; }

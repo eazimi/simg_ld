@@ -18,10 +18,13 @@ private:
   void* deepCopyStack(void* newStack, const void* origStack, size_t len, const void* newStackEnd,
                            const void* origStackEnd, const DynObjInfo& info, int param_index, int param_count,
                            int socket_id) const;
+  void* deepCopyStack(void* newStack, const void* origStack, size_t len, const void* newStackEnd,
+                           const void* origStackEnd, const DynObjInfo& info) const;
 
 public:
   explicit Stack();
   void* createNewStack(const DynObjInfo& info, void* stackStartAddr, int param_index, int param_count, int socket_id);
+  void* createNewStack(const DynObjInfo& info, void* stackStartAddr);
 };
 
 #endif

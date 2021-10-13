@@ -12,6 +12,7 @@ using namespace std;
 
 App::App(const char* socket)
 {
+  cout << "App: in constructor, " << getpid() << endl;
   reserved_area = std::make_unique<MemoryArea_t>();
   init(socket);
 }

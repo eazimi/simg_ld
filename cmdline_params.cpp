@@ -1,8 +1,20 @@
 #include "cmdline_params.h"
+#include <iostream>
 
 // returns the parent's parameters start index in the command line parameters
 int cmdLineParams::process_argv(char** argv)
 {
+  // auto p = argv;
+  // cout << "in process_argv(): " << endl;
+  // auto parCount = 0;
+  // while(*p != nullptr)
+  // {
+  //   cout << *p << endl;
+  //   ++parCount;
+  //   ++p;
+  // }
+  // cout << "parameter count: " << parCount << endl;
+
   vector<string> argv1, argv2;
   auto* args          = &argv1;
   bool separatorFound = false;
@@ -28,5 +40,6 @@ int cmdLineParams::process_argv(char** argv)
     return -1;
   apps_.push_back(argv1); // child
   apps_.push_back(argv2); // parent
+  // cout << "-- in: " << index + 1 << endl;
   return ++index;
 }

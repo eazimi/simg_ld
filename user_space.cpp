@@ -20,6 +20,11 @@ void* UserSpace::createNewStack(const DynObjInfo& info, void* stackStartAddr, in
   return stack_->createNewStack(info, stackStartAddr, param_index, param_count, socket_id);
 }
 
+void* UserSpace::createNewStack(const DynObjInfo& info, void* stackStartAddr) const
+{
+  return stack_->createNewStack(info, stackStartAddr);
+}
+
 void UserSpace::reserve_mem_space(unsigned long size)
 {
   Area area;

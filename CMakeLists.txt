@@ -18,8 +18,8 @@ add_executable(app
     channel.hpp
     channel.cpp)
 
-add_executable(parentProc 
-    parent_proc_main.cpp
+add_executable(mc 
+    mc_main.cpp
     dyn_obj_info.hpp
     channel.hpp
     channel.cpp
@@ -41,7 +41,7 @@ add_executable(parentProc
     cmdline_params.h
     cmdline_params.cpp
     )
-target_link_libraries(parentProc ${LIBEVENT_LIBRARY})    
+target_link_libraries(mc ${LIBEVENT_LIBRARY})    
 
 add_executable(simgld
     stack.h

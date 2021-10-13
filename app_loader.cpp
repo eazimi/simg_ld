@@ -200,3 +200,56 @@ void AppLoader::runRtld(int param_index, int param_count, int socket_id)
   DLOG(ERROR, "Error: RTLD returned instead of passing the control to the created stack. Panic...\n");
   exit(-1);
 }
+
+void AppLoader::runRtld()
+{
+  // write_mmapped_ranges("before_reserve", 0);
+  // userSpace_->reserve_mem_space(GB2);
+  // write_mmapped_ranges("after_reserve", 0);
+
+  int rc         = -1;
+  auto startAddr = userSpace_->getStartAddr();
+  // Load RTLD (ld.so)
+  DynObjInfo ldso = load_lsdo(startAddr, (char*)LD_NAME);
+
+  if (ldso.get_base_addr() == NULL || ldso.get_entry_point() == NULL) {
+    DLOG(ERROR, "Error loading the runtime loader (%s). Exiting...\n", (char*)LD_NAME);
+    return;
+  }
+  cout << "ldso addr: " << std::hex << startAddr << endl;
+
+  // Create new stack region to be used by RTLD
+  auto stackStartAddr = (void*)((unsigned long)startAddr + GB1);
+  void* newStack = userSpace_->createNewStack(ldso, stackStartAddr);
+  cout << "stack addr: " << std::hex << stackStartAddr << endl;
+  if (!newStack) {
+    DLOG(ERROR, "Error creating new stack for RTLD. Exiting...\n");
+    exit(-1);
+  }
+
+  // Create new heap region to be used by RTLD
+  void* heapStartAddr = (void*)((unsigned long)startAddr + GB2);
+  cout << "heap addr: " << std::hex << heapStartAddr << endl;
+  void* newHeap = userSpace_->createNewHeap(heapStartAddr);
+  if (!newHeap) {
+    DLOG(ERROR, "Error creating new heap for RTLD. Exiting...\n");
+    exit(-1);
+  }
+
+  std::stringstream ss;
+  ss << ((getpid() == _parent_pid) ? "[PARENT], " : "[CHILD], ") << "before jumping to sp: " << std::dec << getpid();
+  pause_run(ss.str());
+  // print_mmapped_ranges(getpid());
+  write_mmapped_ranges("before_jump_run_rtld", getpid());
+
+  // Pointer to the ld.so entry point
+  void* ldso_entrypoint = ldso.get_entry_point();
+
+  // cout << "main.cpp -> appLoader->runRtld(), before jump" << endl;
+  // Change the stack pointer to point to the new stack and jump into ld.so
+  asm volatile(CLEAN_FOR_64_BIT(mov %0, %%esp;) : : "g"(newStack) : "memory");
+  asm volatile("jmp *%0" : : "g"(ldso_entrypoint) : "memory");
+
+  DLOG(ERROR, "Error: RTLD returned instead of passing the control to the created stack. Panic...\n");
+  exit(-1);
+}
