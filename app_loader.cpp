@@ -155,8 +155,6 @@ DynObjInfo AppLoader::load_lsdo(void* startAddr, const char* ld_name)
 // to the entry point of ld.so
 void AppLoader::runRtld(vector<string> app_params, int socket_id)
 {
-  // cout << "in runRtld()" << endl;
-
   int rc = -1;
   // auto startAddr = userSpace_->getStartAddr();
   // Load RTLD (ld.so)

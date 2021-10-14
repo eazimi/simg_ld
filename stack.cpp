@@ -167,98 +167,6 @@ void* Stack::deepCopyStack(void* newStack, const void* origStack, size_t len, co
   *(int*)newArgcAddr = newArgvIndex;        
   newArgc = newArgvIndex;
 
-  // if (param_index == 0) {
-
-  //   char *p = newArgv[0];
-  //   char str0[] = "./mc";
-  //   memcpy((void*)p, (void*)str0, (strlen(str0)+1)*sizeof(char));
-  //   p[strlen(str0)] = '\0';
-
-  //   p += strlen(str0)+1;
-  //   newArgv[1] = p;
-  //   char str1[] = "./app";
-  //   memcpy((void*)p, (void*)str1, (strlen(str1)+1)*sizeof(char));
-  //   p[strlen(str1)] = '\0';
-
-  //   p += strlen(str1)+1;
-  //   newArgv[2] = p;
-  //   char str2[16] = {'\0'};
-  //   strcpy(str2, to_string(socket_id).c_str());
-  //   memcpy((void*)p, (void*)str2, (strlen(str2)+1)*sizeof(char));
-  //   p[strlen(str2)+1] = '\0';
-    
-
-
-  //   // sprintf((char*)newArgv[0], str0);
-  //   // cout << newArgv[0] << endl;
-
-  //   // char str1[] = "./app";
-  //   // memcpy((void*)newArgv[1], (void*)str1, (strlen(str1)+1)*sizeof(char));
-  //   // newArgv[1][strlen(str1)] = '\0';
-  //   // cout << getpid() << ", newArgv[1]: " << newArgv[1] << endl;
-
-  //   // char str2[16] = {'\0'};
-  //   // strcpy(str2, to_string(socket_id).c_str());
-  //   // memcpy((void*)newArgv[2], (void*)str2, (strlen(str2)+1)*sizeof(char));
-  //   // cout << newArgv[2] << endl;
-
-  //   // sprintf(newArgv[1], "./app");
-  //   // // newArgv[0][5] = '\0';
-
-  //   // strcpy(newArgv[2], to_string(socket_id).c_str());
-  //   // newArgv[0][1] = '\0';
-    
-  //   newArgv[3] = nullptr;
-
-  //   *(int*)newArgcAddr = 3;
-  //   newArgc = *(int*)newArgcAddr;
-
-  // // cout << newArgv[0] << endl;
-  // // cout << newArgv[1] << ", " << strlen(newArgv[1]) << endl;
-  // // cout << newArgv[2] << endl;
-
-
-
-  // } 
-
-  // cout << getpid() << ", origArgv: " << origArgv[origArgc] << endl;
-  // cout << getpid() << ", newArgv: " << newArgv[newArgc] << endl;
-  // while(true);
-
-  // else // in the parent process
-  // {
-  //   newArgv[0] = newArgv[param_index];
-  //   auto i{0};
-  //   for (; i < param_count; i++)
-  //     newArgv[i + 1] = newArgv[param_index + i];
-  //   newArgv[i + 1]     = nullptr;
-  //   *(int*)newArgcAddr = param_count + 1;
-  // }
-  // *(int *)newArgcAddr = param_count + 1;
-
-  stringstream ss;
-  // ss << getpid() << ", origArgc: " << origArgc << ", deepCopyStack(), printing parameters in orgiStack" << endl;
-  // for(auto i=0; i<origArgc; i++)
-  //   ss << i << ": " << origArgv[i] << endl;
-  // cout << ss.str();
-
-  // ss << getpid() << ", origArgc: " << origArgc << ", deepCopyStack(), printing parameters in orgiStack" << endl;
-  // for(auto i=0; i<origArgc; i++)
-  //   ss << i << ". addr: " << (unsigned long)&origArgv[i] << ", length: " << strlen(origArgv[i]) << endl;
-  // cout << ss.str();
-
-  ss.clear();
-  ss << getpid() << ", newArgc: " << newArgc << ", deepCopyStack(), printing parameters in newStack" << endl;
-  for(auto i=0; i<newArgc; i++)
-    ss << i << ": " << newArgv[i] << endl;
-  cout << ss.str();
-  // cout << newArgv[0] << endl;
-  // // cout << newArgv[1] << ", " << strlen(newArgv[1]) << endl;
-  // cout << newArgv[1] << endl;
-  // cout << newArgv[2] << endl;
-
-  // while(true);
-
   // Patch the env vector in the new stack
   for (int i = 0; origEnv[i] != nullptr; i++) {
     off_t envDelta = (uintptr_t)origEnv[i] - (uintptr_t)origEnv;
@@ -274,7 +182,6 @@ void* Stack::deepCopyStack(void* newStack, const void* origStack, size_t len, co
 
   // We clear out the rest of the new stack region just in case ...
   memset(newStack, 0, (size_t)((uintptr_t)&newArgv[-2] - (uintptr_t)newStack));
-  // memset(newStack, 0, (size_t)((uintptr_t)&newArgv[-3] - (uintptr_t)newStack));
 
   // Return the start of new stack.
   return (void*)newArgcAddr;

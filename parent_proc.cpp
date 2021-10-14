@@ -19,10 +19,7 @@ ParentProc::ParentProc()
 
 void ParentProc::run(char** argv)
 {
-  // cout << "ParentProc: in run()" << endl;
-
   auto param_index = cmdLineParams_->process_argv(argv);
-  cout << "param_index: " << param_index << endl;
   if (param_index == -1) {
     DLOG(ERROR, "Command line parameters are invalid\n");
     DLOG(ERROR, "Usage: ./simg_ld /PATH/TO/APP1 [APP1_PARAMS] -- /PATH/TO/APP2 [APP2_PARAMS]\n");
@@ -36,8 +33,6 @@ void ParentProc::run(char** argv)
   // write_mmapped_ranges("after_reserve", 0);
 
   auto appCount = cmdLineParams_->getAppCount();
-  cout << "in run(), appCount: " << appCount << endl;  
-  // while(true);
   for (auto i = 0; i < appCount; i++) {
     // Create an AF_LOCAL socketpair used for exchanging messages
     // between the model-checker process (ourselves) and the model-checked
@@ -65,17 +60,9 @@ void ParentProc::run(char** argv)
       assert((fdflags != -1 && fcntl(sockets[0], F_SETFD, fdflags & ~FD_CLOEXEC) != -1) &&
              "Could not remove CLOEXEC for socket");
 
-      stringstream ss;
-      ss << getpid() << ", paramsCount: " << paramsCount << " # ";
       // todo: 0 must be replaced with proper value
       auto appParams = cmdLineParams_->getAppParams(0);
-      for(auto p:appParams)
-        ss << p << "  ";
-      ss << endl;
-      cout << ss.str();
-      // while(true);
       appLoader_->runRtld(appParams, sockets[0]);
-
     } else // parent
     {
       allApps.push_back(pid);
