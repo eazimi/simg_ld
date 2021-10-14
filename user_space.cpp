@@ -14,10 +14,10 @@ void* UserSpace::createNewHeap(void* heapStartAddr) const
   return heap_->createNewHeap(heapStartAddr);
 }
 
-void* UserSpace::createNewStack(const DynObjInfo& info, void* stackStartAddr, int param_index, int param_count,
+void* UserSpace::createNewStack(const DynObjInfo& info, void* stackStartAddr, vector<string> app_params,
                                 int socket_id) const
 {
-  return stack_->createNewStack(info, stackStartAddr, param_index, param_count, socket_id);
+  return stack_->createNewStack(info, stackStartAddr, app_params, socket_id);
 }
 
 void* UserSpace::createNewStack(const DynObjInfo& info, void* stackStartAddr) const

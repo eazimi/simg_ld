@@ -153,7 +153,7 @@ DynObjInfo AppLoader::load_lsdo(void* startAddr, const char* ld_name)
 
 // This function loads in ld.so, sets up a separate stack for it, and jumps
 // to the entry point of ld.so
-void AppLoader::runRtld(int param_index, int param_count, int socket_id)
+void AppLoader::runRtld(vector<string> app_params, int socket_id)
 {
   // cout << "in runRtld()" << endl;
 
@@ -170,7 +170,7 @@ void AppLoader::runRtld(int param_index, int param_count, int socket_id)
 
   // Create new stack region to be used by RTLD
   // auto stackStartAddr = (void*)((unsigned long)startAddr + GB1);
-  void* newStack = userSpace_->createNewStack(ldso, 0/*stackStartAddr*/, param_index, param_count, socket_id);
+  void* newStack = userSpace_->createNewStack(ldso, 0/*stackStartAddr*/, app_params, socket_id);
   // cout << "stack addr: " << std::hex << stackStartAddr << endl;
   if (!newStack) {
     DLOG(ERROR, "Error creating new stack for RTLD. Exiting...\n");

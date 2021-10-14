@@ -67,13 +67,14 @@ void ParentProc::run(char** argv)
 
       stringstream ss;
       ss << getpid() << ", paramsCount: " << paramsCount << " # ";
-      auto appParams = cmdLineParams_->getAppParams(i);
+      // todo: 0 must be replaced with proper value
+      auto appParams = cmdLineParams_->getAppParams(0);
       for(auto p:appParams)
         ss << p << "  ";
       ss << endl;
       cout << ss.str();
       // while(true);
-      appLoader_->runRtld(0, paramsCount, sockets[0]);
+      appLoader_->runRtld(appParams, sockets[0]);
 
     } else // parent
     {

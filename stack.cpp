@@ -53,7 +53,7 @@ void Stack::getProcStatField(enum Procstat_t type, char* out, size_t len)
 // location pointed to be `newStack`. Returns the start-of-stack pointer
 // in the new stack region.
 void* Stack::deepCopyStack(void* newStack, const void* origStack, size_t len, const void* newStackEnd,
-                           const void* origStackEnd, const DynObjInfo& info, int param_index, int param_count,
+                           const void* origStackEnd, const DynObjInfo& info, vector<string> app_params,
                            int socket_id) const
 {
   // Return early if any pointer is NULL
@@ -136,122 +136,90 @@ void* Stack::deepCopyStack(void* newStack, const void* origStack, size_t len, co
   //   "/path/to/kernel-loader".
   // off_t argvDelta = (uintptr_t)getenv("TARGET_LD") - (uintptr_t)origArgv;
 
-  // in the child process
-  if (param_index == 0) {
-    // off_t argvDelta = (uintptr_t)origArgv[1] - (uintptr_t)origArgv;
-    // newArgv[0]      = (char*)((uintptr_t)newArgv + (uintptr_t)argvDelta);
-    // // cout << "newArgv[0] is: " << newArgv[0] << endl;
-    // // cout << "param_count is: " << param_count << endl;
-    // strcpy(newArgv[param_count + 1], to_string(socket_id).c_str());
-    // newArgv[param_count + 2] = nullptr;
-    // *(int*)newArgcAddr       = param_count + 2;
+  // make up the parameters in the stack
+  char* p    = newArgv[0];
+  char str[] = "./mc";
+  memcpy((void*)p, (void*)str, (strlen(str) + 1) * sizeof(char));
+  *(p + strlen(str)) = '\0';
 
-    // int length = 0;
-    // for (auto i = 1; i < newArgc; i++) {
-    //   length = strlen(newArgv[i]);
-    //   strcpy(newArgv[i - 1], newArgv[i]);
-    //   newArgv[i-1][length] = '\0';
-    // }
-    // length = strlen(newArgv[newArgc-1]);
-    // strcpy(newArgv[newArgc-1], to_string(socket_id).c_str());
-    // newArgv[newArgc-1][length] = '\0';
-    // newArgv[newArgc] = nullptr;
+  auto newArgvIndex = 1;
+  p += strlen(str) + 1;
+  for (auto s : app_params) {
+    int length            = strlen(s.c_str());
+    newArgv[newArgvIndex] = p;
+    memcpy((void*)p, (void*)s.c_str(), (length + 1) * sizeof(char));
+    *(p + length) = '\0';
+    p += length + 1;
+    ++newArgvIndex;
+  }
 
-    // newArgv = &newArgv[1];
+  newArgv[newArgvIndex++]    = p;
+  char sock_id[16] = {'\0'};
+  strcpy(sock_id, to_string(socket_id).c_str());
+  int length = strlen(sock_id);
+  memcpy((void*)p, (void*)sock_id, (length + 1) * sizeof(char));
+  *(p + length) = '\0';
 
+  p += length + 1;
+  *p = '\0';
+  newArgv[newArgvIndex] = p;
 
-    // newArgc = --(*(int*)newArgcAddr);
+  *(int*)newArgcAddr = newArgvIndex;        
+  newArgc = newArgvIndex;
 
-    // off_t argvDelta = (uintptr_t)origArgv[origArgc] - (uintptr_t)origArgv;
-    // memset(&newArgv[0], 0, argvDelta);
+  // if (param_index == 0) {
+
+  //   char *p = newArgv[0];
+  //   char str0[] = "./mc";
+  //   memcpy((void*)p, (void*)str0, (strlen(str0)+1)*sizeof(char));
+  //   p[strlen(str0)] = '\0';
+
+  //   p += strlen(str0)+1;
+  //   newArgv[1] = p;
+  //   char str1[] = "./app";
+  //   memcpy((void*)p, (void*)str1, (strlen(str1)+1)*sizeof(char));
+  //   p[strlen(str1)] = '\0';
+
+  //   p += strlen(str1)+1;
+  //   newArgv[2] = p;
+  //   char str2[16] = {'\0'};
+  //   strcpy(str2, to_string(socket_id).c_str());
+  //   memcpy((void*)p, (void*)str2, (strlen(str2)+1)*sizeof(char));
+  //   p[strlen(str2)+1] = '\0';
     
-    // for(auto i=0; i<newArgc; i++)
-    // {
-    //   cout << "newArgv[" << i << "]: " << newArgv[i] << ", " << strlen(newArgv[i]) << endl;
-    //   memset(&newArgv[i], 0, strlen(newArgv[i]));
-    // }
-    // for(auto i=0; i<newArgc; i++)
-    // {
-    //   cout << "after, newArgv[" << i << "]: " << newArgv[i] << ", " << strlen(newArgv[i]) << endl;
-    // }
-
-    // cout << "strlen(newArgv[0]): " << strlen(newArgv[0]) << endl;
-    // cout << newArgv[0] << endl;
-
-    // newArgv[0][0] = '.';
-    // newArgv[0][1] = '/';
-    // newArgv[0][2] = 'm';
-    // newArgv[0][3] = 'c';
-    // newArgv[0][4] = '\0';
-
-    // cout << newArgv[0][0] << endl;
-    // cout << newArgv[0][1] << endl;
-    // cout << newArgv[0][2] << endl;
-    // cout << newArgv[0][3] << endl;
-    // cout << newArgv[0][4] << endl;
-    // cout << newArgv[0][5] << endl;
-    // cout << newArgv[0][6] << endl;
-    // cout << newArgv[0][7] << endl;
-
-    // cout << (void*)&(newArgv[0][0]) << endl;
-    // cout << (void*)&newArgv[0][1] << endl;
-    // cout << (void*)&newArgv[0][2] << endl;
-    // cout << (void*)&newArgv[0][3] << endl;
-    // cout << (void*)&newArgv[0][4] << endl;
-    // cout << (void*)&newArgv[0][5] << endl;
-    // cout << (void*)&newArgv[0][6] << endl;
-    // cout << (void*)&newArgv[0][7] << endl;
-
-    char *p = newArgv[0];
-    char str0[] = "./mc";
-    memcpy((void*)p, (void*)str0, (strlen(str0)+1)*sizeof(char));
-    p[strlen(str0)] = '\0';
-
-    p += strlen(str0)+1;
-    newArgv[1] = p;
-    char str1[] = "./app";
-    memcpy((void*)p, (void*)str1, (strlen(str1)+1)*sizeof(char));
-    p[strlen(str1)] = '\0';
-
-    p += strlen(str1)+1;
-    newArgv[2] = p;
-    char str2[16] = {'\0'};
-    strcpy(str2, to_string(socket_id).c_str());
-    memcpy((void*)p, (void*)str2, (strlen(str2)+1)*sizeof(char));
-    p[strlen(str2)+1] = '\0';
 
 
-    // sprintf((char*)newArgv[0], str0);
-    // cout << newArgv[0] << endl;
+  //   // sprintf((char*)newArgv[0], str0);
+  //   // cout << newArgv[0] << endl;
 
-    // char str1[] = "./app";
-    // memcpy((void*)newArgv[1], (void*)str1, (strlen(str1)+1)*sizeof(char));
-    // newArgv[1][strlen(str1)] = '\0';
-    // cout << getpid() << ", newArgv[1]: " << newArgv[1] << endl;
+  //   // char str1[] = "./app";
+  //   // memcpy((void*)newArgv[1], (void*)str1, (strlen(str1)+1)*sizeof(char));
+  //   // newArgv[1][strlen(str1)] = '\0';
+  //   // cout << getpid() << ", newArgv[1]: " << newArgv[1] << endl;
 
-    // char str2[16] = {'\0'};
-    // strcpy(str2, to_string(socket_id).c_str());
-    // memcpy((void*)newArgv[2], (void*)str2, (strlen(str2)+1)*sizeof(char));
-    // cout << newArgv[2] << endl;
+  //   // char str2[16] = {'\0'};
+  //   // strcpy(str2, to_string(socket_id).c_str());
+  //   // memcpy((void*)newArgv[2], (void*)str2, (strlen(str2)+1)*sizeof(char));
+  //   // cout << newArgv[2] << endl;
 
-    // sprintf(newArgv[1], "./app");
-    // // newArgv[0][5] = '\0';
+  //   // sprintf(newArgv[1], "./app");
+  //   // // newArgv[0][5] = '\0';
 
-    // strcpy(newArgv[2], to_string(socket_id).c_str());
-    // newArgv[0][1] = '\0';
+  //   // strcpy(newArgv[2], to_string(socket_id).c_str());
+  //   // newArgv[0][1] = '\0';
     
-    newArgv[3] = nullptr;
+  //   newArgv[3] = nullptr;
 
-    *(int*)newArgcAddr = 3;
-    newArgc = *(int*)newArgcAddr;
+  //   *(int*)newArgcAddr = 3;
+  //   newArgc = *(int*)newArgcAddr;
 
-  // cout << newArgv[0] << endl;
-  // cout << newArgv[1] << ", " << strlen(newArgv[1]) << endl;
-  // cout << newArgv[2] << endl;
+  // // cout << newArgv[0] << endl;
+  // // cout << newArgv[1] << ", " << strlen(newArgv[1]) << endl;
+  // // cout << newArgv[2] << endl;
 
 
 
-  } 
+  // } 
 
   // cout << getpid() << ", origArgv: " << origArgv[origArgc] << endl;
   // cout << getpid() << ", newArgv: " << newArgv[newArgc] << endl;
@@ -423,7 +391,7 @@ void Stack::patchAuxv(ElfW(auxv_t) * av, unsigned long phnum, unsigned long phdr
 //  1. Creates a new stack region to be used for initialization of RTLD (ld.so)
 //  2. Deep copies the original stack (from the kernel) in the new stack region
 //  3. Returns a pointer to the beginning of stack in the new stack region
-void* Stack::createNewStack(const DynObjInfo& info, void* stackStartAddr, int param_index, int param_count, int socket_id)
+void* Stack::createNewStack(const DynObjInfo& info, void* stackStartAddr, vector<string> app_params, int socket_id)
 {
   Area stack;
   char stackEndStr[20] = {0};
@@ -474,7 +442,7 @@ void* Stack::createNewStack(const DynObjInfo& info, void* stackStartAddr, int pa
 
   // 2. Deep copy stack
   newStackEnd = deepCopyStack(newStack, stack.addr, stack.size, (void*)newStackEnd, (void*)origStackEnd, info,
-                              param_index, param_count, socket_id);
+                              app_params, socket_id);
 
   return newStackEnd;
 }

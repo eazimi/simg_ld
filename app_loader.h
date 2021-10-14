@@ -18,7 +18,7 @@ private:
 
 public:
   explicit AppLoader();
-  void runRtld(int param_index, int param_count, int socket_id);
+  void runRtld(vector<string> app_params, int socket_id);
   void runRtld();
   inline void reserveMemSpace(unsigned long size) const { userSpace_->reserve_mem_space(size); }
   inline void* getReservedSpaceStartAddr() const { return userSpace_->getStartAddr(); }

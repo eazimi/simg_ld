@@ -16,14 +16,14 @@ private:
   ElfW(auxv_t) * getAuxvAddr(const char** env) const;
   void patchAuxv(ElfW(auxv_t) * av, unsigned long phnum, unsigned long phdr, unsigned long entry) const;
   void* deepCopyStack(void* newStack, const void* origStack, size_t len, const void* newStackEnd,
-                           const void* origStackEnd, const DynObjInfo& info, int param_index, int param_count,
+                           const void* origStackEnd, const DynObjInfo& info, vector<string> app_params,
                            int socket_id) const;
   void* deepCopyStack(void* newStack, const void* origStack, size_t len, const void* newStackEnd,
                            const void* origStackEnd, const DynObjInfo& info) const;
 
 public:
   explicit Stack();
-  void* createNewStack(const DynObjInfo& info, void* stackStartAddr, int param_index, int param_count, int socket_id);
+  void* createNewStack(const DynObjInfo& info, void* stackStartAddr, vector<string> app_params, int socket_id);
   void* createNewStack(const DynObjInfo& info, void* stackStartAddr);
 };
 
