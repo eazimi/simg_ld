@@ -210,7 +210,8 @@ void AppLoader::runRtld()
   // write_mmapped_ranges("after_reserve", 0);
 
   int rc         = -1;
-  auto startAddr = userSpace_->getStartAddr();
+  // auto startAddr = userSpace_->getStartAddr();
+  void* startAddr = 0;
   // Load RTLD (ld.so)
   DynObjInfo ldso = load_lsdo(startAddr, (char*)LD_NAME);
 

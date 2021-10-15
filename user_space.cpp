@@ -28,13 +28,8 @@ void UserSpace::reserve_mem_space(unsigned long relativeDistFromStack, unsigned 
       mmapWrapper(startAddr, size, PROT_READ | PROT_WRITE, MAP_GROWSDOWN | MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
   if (spaceAddr == MAP_FAILED) {
     DLOG(ERROR, "Failed to mmap region: %s\n", strerror(errno));
-    startAddr_ = nullptr;
-    size_ = 0;
     return;
   }
-
-  startAddr_ = spaceAddr;
-  size_ = size;
 
   cout << "reserved addr: " << std::hex << startAddr << endl;
 }

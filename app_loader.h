@@ -26,8 +26,6 @@ public:
   {
     userSpace_->reserve_mem_space(relativeDistFromStack, size);
   }
-  inline void* getReservedSpaceStartAddr() const { return userSpace_->getStartAddr(); }
-  inline unsigned long getReservedSpaceSize() const { return userSpace_->getSize(); }
 };
 
 #endif
