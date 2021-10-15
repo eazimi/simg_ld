@@ -3,28 +3,6 @@
 #include <tuple>
 #include "global.hpp"
 
-UserSpace::UserSpace()
-{
-  stack_ = make_unique<Stack>();
-  heap_  = make_unique<Heap>();
-}
-
-void* UserSpace::createNewHeap(void* heapStartAddr) const
-{
-  return heap_->createNewHeap(heapStartAddr);
-}
-
-void* UserSpace::createNewStack(const DynObjInfo& info, void* stackStartAddr, vector<string> app_params,
-                                int socket_id) const
-{
-  return stack_->createNewStack(info, stackStartAddr, app_params, socket_id);
-}
-
-void* UserSpace::createNewStack(const DynObjInfo& info, void* stackStartAddr) const
-{
-  return stack_->createNewStack(info, stackStartAddr);
-}
-
 void UserSpace::reserve_mem_space(unsigned long size)
 {
   Area area;

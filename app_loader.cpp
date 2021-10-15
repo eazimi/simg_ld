@@ -8,6 +8,8 @@
 AppLoader::AppLoader()
 {
   userSpace_ = make_unique<UserSpace>();
+  stack_     = make_unique<Stack>();
+  heap_      = make_unique<Heap>();
 }
 
 Elf64_Addr AppLoader::get_interpreter_entry(const char* ld_name)
@@ -168,7 +170,7 @@ void AppLoader::runRtld(vector<string> app_params, int socket_id)
 
   // Create new stack region to be used by RTLD
   // auto stackStartAddr = (void*)((unsigned long)startAddr + GB1);
-  void* newStack = userSpace_->createNewStack(ldso, 0/*stackStartAddr*/, app_params, socket_id);
+  void* newStack = stack_->createNewStack(ldso, 0/*stackStartAddr*/, app_params, socket_id);
   // cout << "stack addr: " << std::hex << stackStartAddr << endl;
   if (!newStack) {
     DLOG(ERROR, "Error creating new stack for RTLD. Exiting...\n");
@@ -178,7 +180,7 @@ void AppLoader::runRtld(vector<string> app_params, int socket_id)
   // Create new heap region to be used by RTLD
   // void* heapStartAddr = (void*)((unsigned long)startAddr + GB2);
   // cout << "heap addr: " << std::hex << heapStartAddr << endl;
-  void* newHeap = userSpace_->createNewHeap(0/*heapStartAddr*/);
+  void* newHeap = heap_->createNewHeap(0/*heapStartAddr*/);
   if (!newHeap) {
     DLOG(ERROR, "Error creating new heap for RTLD. Exiting...\n");
     exit(-1);
@@ -220,7 +222,7 @@ void AppLoader::runRtld()
 
   // Create new stack region to be used by RTLD
   auto stackStartAddr = (void*)((unsigned long)startAddr + GB1);
-  void* newStack = userSpace_->createNewStack(ldso, stackStartAddr);
+  void* newStack = stack_->createNewStack(ldso, stackStartAddr);
   cout << "stack addr: " << std::hex << stackStartAddr << endl;
   if (!newStack) {
     DLOG(ERROR, "Error creating new stack for RTLD. Exiting...\n");
@@ -230,7 +232,7 @@ void AppLoader::runRtld()
   // Create new heap region to be used by RTLD
   void* heapStartAddr = (void*)((unsigned long)startAddr + GB2);
   cout << "heap addr: " << std::hex << heapStartAddr << endl;
-  void* newHeap = userSpace_->createNewHeap(heapStartAddr);
+  void* newHeap = heap_->createNewHeap(heapStartAddr);
   if (!newHeap) {
     DLOG(ERROR, "Error creating new heap for RTLD. Exiting...\n");
     exit(-1);

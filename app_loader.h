@@ -11,6 +11,8 @@ using namespace std;
 class AppLoader {
 private:
   unique_ptr<UserSpace> userSpace_;
+  unique_ptr<Stack> stack_;
+  unique_ptr<Heap> heap_;
   Elf64_Addr get_interpreter_entry(const char* ld_name);
   unsigned long loadSegment(void* startAddr, int fd, Elf64_Ehdr* ehdr, Elf64_Phdr* phdr);
   void* loadInterpreter(void* startAddr, const char* elf_interpreter, DynObjInfo& info);
