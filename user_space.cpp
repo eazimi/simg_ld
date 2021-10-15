@@ -31,7 +31,6 @@ void* UserSpace::reserve_mem_space(unsigned long relativeDistFromStack, unsigned
     return nullptr;
   }
 
-  cout << "reserved addr: " << std::hex << startAddr << endl;
   return startAddr;
 }
 

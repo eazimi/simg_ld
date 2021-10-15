@@ -205,12 +205,8 @@ void AppLoader::runRtld(vector<string> app_params, int socket_id)
 
 void AppLoader::runRtld(void* loadAddr)
 {
-  // write_mmapped_ranges("before_reserve", 0);
-  // userSpace_->reserve_mem_space(GB2);
-  // write_mmapped_ranges("after_reserve", 0);
 
   int rc         = -1;
-  // auto startAddr = userSpace_->getStartAddr();
   void* startAddr = 0;
   // Load RTLD (ld.so)
   DynObjInfo ldso = load_lsdo(startAddr, (char*)LD_NAME);

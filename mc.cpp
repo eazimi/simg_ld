@@ -26,11 +26,6 @@ void MC::run(char** argv)
     DLOG(ERROR, "exiting ...\n");
     exit(-1);
   }
-  
-  // reserve some 2 GB in the address space, lock remained free areas
-  // write_mmapped_ranges("before_reserve", 0);
-  // appLoader_->reserveMemSpace(GB2);
-  // write_mmapped_ranges("after_reserve", 0);
 
   auto appCount = cmdLineParams_->getAppCount();
   for (auto i = 0; i < appCount; i++) {
@@ -46,7 +41,6 @@ void MC::run(char** argv)
     if (pid == 0) // child
     {
       ::close(sockets[1]);
-      auto paramsCount = cmdLineParams_->getAppParamsCount(i);
 
 #ifdef __linux__
       // Make sure we do not outlive our parent
