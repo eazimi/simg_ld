@@ -155,7 +155,7 @@ DynObjInfo AppLoader::load_lsdo(void* startAddr, const char* ld_name)
 
 // This function loads in ld.so, sets up a separate stack for it, and jumps
 // to the entry point of ld.so
-void AppLoader::runRtld(vector<string> app_params, int socket_id)
+void AppLoader::runRtld(void* loadAddr, vector<string> app_params, int socket_id)
 {
   int rc = -1;
   // auto startAddr = userSpace_->getStartAddr();
@@ -203,22 +203,25 @@ void AppLoader::runRtld(vector<string> app_params, int socket_id)
   exit(-1);
 }
 
-void AppLoader::runRtld(void* loadAddr)
+void AppLoader::runRtld(void* loadAddr, void* lowerHalfAddr)
 {
+  char strAddr[32];
+  strcpy(strAddr, to_string((unsigned long)lowerHalfAddr).c_str());
+  memcpy(loadAddr, (void*)strAddr, strlen(strAddr)+1); // copy '\0' too
 
   int rc         = -1;
-  void* startAddr = 0;
   // Load RTLD (ld.so)
-  DynObjInfo ldso = load_lsdo(startAddr, (char*)LD_NAME);
+  void* ldsoAddr      = (void*)((unsigned long)loadAddr + PAGE_SIZE);
+  DynObjInfo ldso = load_lsdo(ldsoAddr, (char*)LD_NAME);
 
   if (ldso.get_base_addr() == NULL || ldso.get_entry_point() == NULL) {
     DLOG(ERROR, "Error loading the runtime loader (%s). Exiting...\n", (char*)LD_NAME);
     return;
   }
-  cout << "ldso addr: " << std::hex << startAddr << endl;
+  cout << "ldso addr: " << std::hex << ldsoAddr << " # load addr: " << std::hex << loadAddr << endl;
 
   // Create new stack region to be used by RTLD
-  auto stackStartAddr = (void*)((unsigned long)startAddr + GB1);
+  auto stackStartAddr = (void*)((unsigned long)loadAddr + GB1);
   void* newStack = stack_->createNewStack(ldso, stackStartAddr);
   cout << "stack addr: " << std::hex << stackStartAddr << endl;
   if (!newStack) {
@@ -227,7 +230,7 @@ void AppLoader::runRtld(void* loadAddr)
   }
 
   // Create new heap region to be used by RTLD
-  void* heapStartAddr = (void*)((unsigned long)startAddr + GB2);
+  void* heapStartAddr = (void*)((unsigned long)loadAddr + MB1500);
   cout << "heap addr: " << std::hex << heapStartAddr << endl;
   void* newHeap = heap_->createNewHeap(heapStartAddr);
   if (!newHeap) {

@@ -56,7 +56,7 @@ void MC::run(char** argv)
 
       // todo: 0 must be replaced with proper value
       auto appParams = cmdLineParams_->getAppParams(0);
-      appLoader_->runRtld(appParams, sockets[0]);
+      appLoader_->runRtld(0, appParams, sockets[0]);
     } else // parent
     {
       allApps.push_back(pid);
