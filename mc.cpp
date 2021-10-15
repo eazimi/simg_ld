@@ -1,4 +1,4 @@
-#include "parent_proc.h"
+#include "mc.h"
 #include "global.hpp"
 #include <algorithm>
 #include <assert.h>
@@ -10,14 +10,14 @@
 #include <sys/types.h>
 #include <sys/wait.h>
 
-ParentProc::ParentProc()
+MC::MC()
 {
   appLoader_     = make_unique<AppLoader>();
   cmdLineParams_ = make_unique<cmdLineParams>();
   syncProc_      = make_unique<SyncProc>();
 }
 
-void ParentProc::run(char** argv)
+void MC::run(char** argv)
 {
   auto param_index = cmdLineParams_->process_argv(argv);
   if (param_index == -1) {
@@ -75,7 +75,7 @@ void ParentProc::run(char** argv)
   syncProc_ = make_unique<SyncProc>();
   syncProc_->start(
       [](evutil_socket_t sig, short event, void* obj) {
-        auto mc = static_cast<ParentProc*>(obj);
+        auto mc = static_cast<MC*>(obj);
         if (event == EV_READ) {
           std::array<char, MESSAGE_LENGTH> buffer;
           ssize_t size = mc->syncProc_->get_channel(sig).receive(buffer.data(), buffer.size(), false);
@@ -96,7 +96,7 @@ void ParentProc::run(char** argv)
       this, allSockets);
 }
 
-void ParentProc::handle_message(int socket, void* buffer)
+void MC::handle_message(int socket, void* buffer)
 {
   vector<string> str_messages{"NONE", "READY", "CONTINUE", "FINISH", "DONE"};
   s_message_t base_message;
@@ -120,7 +120,7 @@ void ParentProc::handle_message(int socket, void* buffer)
   //   sync_proc->break_loop();
 }
 
-void ParentProc::handle_waitpid()
+void MC::handle_waitpid()
 {
   int status;
   pid_t pid;

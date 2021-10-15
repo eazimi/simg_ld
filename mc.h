@@ -1,5 +1,5 @@
-#ifndef PARENTPROC_H
-#define PARENTPROC_H
+#ifndef MC_H
+#define MC_H
 
 #include "app_loader.h"
 #include "cmdline_params.h"
@@ -7,7 +7,7 @@
 
 using namespace std;
 
-class ParentProc {
+class MC {
 private:
   std::list<int> allSockets;
   std::list<pid_t> allApps;
@@ -18,7 +18,7 @@ private:
   void handle_waitpid();
 
 public:
-  explicit ParentProc();
+  explicit MC();
   void run(char** argv);
 };
 

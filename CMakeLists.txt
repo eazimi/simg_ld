@@ -36,8 +36,8 @@ add_executable(mc
     user_space.cpp
     app_loader.h
     app_loader.cpp
-    parent_proc.h
-    parent_proc.cpp
+    mc.h
+    mc.cpp
     cmdline_params.h
     cmdline_params.cpp
     )
