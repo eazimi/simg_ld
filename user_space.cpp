@@ -3,7 +3,7 @@
 #include <tuple>
 #include "global.hpp"
 
-void UserSpace::reserve_mem_space(unsigned long size)
+void UserSpace::reserve_mem_space(unsigned long relativeDistFromStack, unsigned long size)
 {
   Area area;
   bool found = false;
@@ -22,7 +22,7 @@ void UserSpace::reserve_mem_space(unsigned long size)
 
   void* startAddr = nullptr;
   if (found)
-    startAddr = (VA)area.addr - GB3;
+    startAddr = (VA)area.addr - relativeDistFromStack;
 
   void* spaceAddr =
       mmapWrapper(startAddr, size, PROT_READ | PROT_WRITE, MAP_GROWSDOWN | MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);

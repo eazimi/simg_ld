@@ -13,7 +13,7 @@ private:
 
 public:
   explicit UserSpace() = default;
-  void reserve_mem_space(unsigned long size);
+  void reserve_mem_space(unsigned long relativeDistFromStack, unsigned long size);
   void mmap_all_free_spaces();  
   inline void* getStartAddr() const { return startAddr_; }
   inline unsigned long getSize() const { return size_; }

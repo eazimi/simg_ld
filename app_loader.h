@@ -22,7 +22,10 @@ public:
   explicit AppLoader();
   void runRtld(vector<string> app_params, int socket_id);
   void runRtld();
-  inline void reserveMemSpace(unsigned long size) const { userSpace_->reserve_mem_space(size); }
+  inline void reserveMemSpace(unsigned long relativeDistFromStack, unsigned long size) const
+  {
+    userSpace_->reserve_mem_space(relativeDistFromStack, size);
+  }
   inline void* getReservedSpaceStartAddr() const { return userSpace_->getStartAddr(); }
   inline unsigned long getReservedSpaceSize() const { return userSpace_->getSize(); }
 };
