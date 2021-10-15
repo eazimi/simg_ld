@@ -3,14 +3,14 @@
 #include <tuple>
 #include "global.hpp"
 
-void UserSpace::reserve_mem_space(unsigned long relativeDistFromStack, unsigned long size)
+void* UserSpace::reserve_mem_space(unsigned long relativeDistFromStack, unsigned long size)
 {
   Area area;
   bool found = false;
   int mapsfd = open("/proc/self/maps", O_RDONLY);
   if (mapsfd < 0) {
     DLOG(ERROR, "Failed to open proc maps\n");
-    return;
+    return nullptr;
   }
   while (readMapsLine(mapsfd, &area)) {
     if (strstr(area.name, "[stack]")) {
@@ -25,13 +25,14 @@ void UserSpace::reserve_mem_space(unsigned long relativeDistFromStack, unsigned 
     startAddr = (VA)area.addr - relativeDistFromStack;
 
   void* spaceAddr =
-      mmapWrapper(startAddr, size, PROT_READ | PROT_WRITE, MAP_GROWSDOWN | MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+      mmapWrapper(startAddr, size, PROT_READ | PROT_WRITE, /*MAP_GROWSDOWN |*/ MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
   if (spaceAddr == MAP_FAILED) {
     DLOG(ERROR, "Failed to mmap region: %s\n", strerror(errno));
-    return;
+    return nullptr;
   }
 
   cout << "reserved addr: " << std::hex << startAddr << endl;
+  return startAddr;
 }
 
 void UserSpace::mmap_all_free_spaces()

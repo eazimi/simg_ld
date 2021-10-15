@@ -21,11 +21,16 @@ private:
 public:
   explicit AppLoader();
   void runRtld(vector<string> app_params, int socket_id);
-  void runRtld();
-  inline void reserveMemSpace(unsigned long relativeDistFromStack, unsigned long size) const
+  void runRtld(void* loadAddr);
+  inline void* reserveMemSpace(unsigned long relativeDistFromStack, unsigned long size) const
   {
-    userSpace_->reserve_mem_space(relativeDistFromStack, size);
+    return userSpace_->reserve_mem_space(relativeDistFromStack, size);
   }
+
+  inline void *getUpperHalfAddr() const { return userSpace_->getUpperHalfAddr(); }  
+  inline void *getLowerHalfAddr() const { return userSpace_->getLowerHalfAddr(); }  
+  inline void setUpperHalfAddr(void* addr) const { userSpace_->setUpperHalfAddr(addr); }  
+  inline void setLowerHalfAddr(void* addr) const { userSpace_->setLowerHalfAddr(addr); }
 };
 
 #endif

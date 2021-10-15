@@ -203,7 +203,7 @@ void AppLoader::runRtld(vector<string> app_params, int socket_id)
   exit(-1);
 }
 
-void AppLoader::runRtld()
+void AppLoader::runRtld(void* loadAddr)
 {
   // write_mmapped_ranges("before_reserve", 0);
   // userSpace_->reserve_mem_space(GB2);
