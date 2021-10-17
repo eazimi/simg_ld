@@ -27,6 +27,10 @@ void MC::run(char** argv)
     exit(-1);
   }
 
+  auto upperHalfAddr = (unsigned long)appLoader_->getStackAddr() - MB5500;
+  unsigned long loadAddr = atol((char*)upperHalfAddr);
+  cout << "mc.cpp->run(), loadAddr: 0x" << std::hex << loadAddr << endl;
+
   auto appCount = cmdLineParams_->getAppCount();
   for (auto i = 0; i < appCount; i++) {
     // Create an AF_LOCAL socketpair used for exchanging messages
@@ -56,7 +60,7 @@ void MC::run(char** argv)
 
       // todo: 0 must be replaced with proper value
       auto appParams = cmdLineParams_->getAppParams(0);
-      appLoader_->runRtld(0, appParams, sockets[0]);
+      appLoader_->runRtld((void*)loadAddr, appParams, sockets[0]);
     } else // parent
     {
       allApps.push_back(pid);
