@@ -34,6 +34,23 @@ void* UserSpace::reserve_mem_space(unsigned long relativeDistFromStack, unsigned
   return startAddr;
 }
 
+void* UserSpace::get_stack_addr() const
+{
+  Area area;
+  bool found = false;
+  int mapsfd = open("/proc/self/maps", O_RDONLY);
+  if (mapsfd < 0) {
+    DLOG(ERROR, "Failed to open proc maps\n");
+    return nullptr;
+  }
+  while (readMapsLine(mapsfd, &area)) {
+    if (strstr(area.name, "[stack]"))
+      break;
+  }
+  close(mapsfd);
+  return (void*)area.addr;
+}
+
 void UserSpace::mmap_all_free_spaces()
 {
   std::vector<pair<void*, void*>> mmaps_range {}; // start and end of a range

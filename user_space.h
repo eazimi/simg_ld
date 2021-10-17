@@ -10,6 +10,7 @@ class UserSpace {
 public:
   explicit UserSpace() = default;
   void* reserve_mem_space(unsigned long relativeDistFromStack, unsigned long size);
+  void* get_stack_addr() const;
   void mmap_all_free_spaces();
 };
 

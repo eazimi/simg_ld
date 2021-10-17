@@ -22,11 +22,16 @@ public:
   explicit AppLoader();
   void runRtld(void* loadAddr, vector<string> app_params, int socket_id);
   void runRtld(void* loadAddr, void* lowerHalfAddr);
+  
   inline void* reserveMemSpace(unsigned long relativeDistFromStack, unsigned long size) const
   {
     return userSpace_->reserve_mem_space(relativeDistFromStack, size);
   }
 
+  inline void* getStackAddr() const
+  {
+    return userSpace_->get_stack_addr();
+  }  
 };
 
 #endif
