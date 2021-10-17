@@ -81,11 +81,11 @@ void App::init(const char* socket)
   ss << "Could not wait for the parent (errno = %d: %s)" << errno << strerror(errno);
   str = ss.str().c_str();
 
-  DLOG(NOISE, "child %d: before SIGSTOP\n", getpid());
+  DLOG(NOISE, "app %d: before SIGSTOP\n", getpid());
   assert((errno == 0 && raise(SIGSTOP) == 0) && str); // Wait for the parent to awake me
-  DLOG(NOISE, "child %d: PTRACE_CONT received\n", getpid()); 
+  DLOG(NOISE, "app %d: PTRACE_CONT received\n", getpid()); 
 
-  write_mmapped_ranges("init_child", getpid()); 
+  write_mmapped_ranges("app-completely_loaded-init()", getpid()); 
 
   s_message_t message{MessageType::READY, getpid()};
   assert(channel_->send(message) == 0 && "Could not send the initial message.");
@@ -105,7 +105,7 @@ void App::handle_message() const
     const s_message_t* message = (s_message_t*)message_buffer.data();
     switch (message->type) {
       case MessageType::CONTINUE:
-        DLOG(INFO, "child %d: parent sent a %s message\n", getpid(), "CONTINUE");
+        DLOG(INFO, "app %d: mc sent a %s message\n", getpid(), "CONTINUE");
         s_message_t base_message;
         base_message.type = MessageType::FINISH;
         base_message.pid  = getpid();
@@ -113,12 +113,12 @@ void App::handle_message() const
         break;
 
       case MessageType::DONE:
-        DLOG(INFO, "child %d: parent sent a %s message\n", getpid(), "DONE");
+        DLOG(INFO, "app %d: mc sent a %s message\n", getpid(), "DONE");
         // loop = false;
         break;
 
       default:
-        DLOG(ERROR, "child %d: parent sent an invalid message\n", getpid());
+        DLOG(ERROR, "app %d: mc sent an invalid message\n", getpid());
     }
   }
   // raise(SIGINT);

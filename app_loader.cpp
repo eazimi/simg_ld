@@ -78,11 +78,14 @@ unsigned long AppLoader::loadSegment(void* startAddr, int fd, Elf64_Ehdr* ehdr, 
     if (iter->p_type != PT_LOAD)
       continue;
     off   = iter->p_vaddr & ALIGN;
-    start = dyn ? (unsigned long)base : 0;
+    start = dyn ? (unsigned long)base : 0; 
+
+    // cout << "first start: " << std::hex << start << endl;
+
     // start = (unsigned long)g_range->start;
     start += TRUNC_PG(iter->p_vaddr);
     sz = ROUND_PG(iter->p_memsz + off);
-
+    
     p = (unsigned char*)mmap((void*)start, sz, PROT_WRITE, flags, -1, 0);
     if (p == (void*)-1) {
       munmap(base, maxva - minva);
@@ -187,11 +190,7 @@ void AppLoader::runRtld(void* loadAddr, vector<string> app_params, int socket_id
     exit(-1);
   }
 
-  std::stringstream ss;
-  ss << ((getpid() == _parent_pid) ? "[PARENT], " : "[CHILD], ") << "before jumping to sp: " << std::dec << getpid();
-  pause_run(ss.str());
-  // print_mmapped_ranges(getpid());
-  write_mmapped_ranges("before_jump_run_rtld", getpid());
+  write_mmapped_ranges("app-before_jump-runRtld()", getpid());
 
   // Pointer to the ld.so entry point
   void* ldso_entrypoint = ldso.get_entry_point();
@@ -242,11 +241,7 @@ void AppLoader::runRtld(void* loadAddr, void* lowerHalfAddr)
     exit(-1);
   }
 
-  std::stringstream ss;
-  ss << ((getpid() == _parent_pid) ? "[PARENT], " : "[CHILD], ") << "before jumping to sp: " << std::dec << getpid();
-  pause_run(ss.str());
-  // print_mmapped_ranges(getpid());
-  write_mmapped_ranges("before_jump_run_rtld", getpid());
+  write_mmapped_ranges("simgld-before_jump-runRtld()", getpid());
 
   // Pointer to the ld.so entry point
   void* ldso_entrypoint = ldso.get_entry_point();

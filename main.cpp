@@ -9,6 +9,7 @@ int main(int argc, char** argv, char** env)
   auto lowerHalfAddr = appLoader->reserveMemSpace(GB3, GB2);
   cout << "main.cpp->main(), upperHalf_addr: " << std::hex << upperHalfAddr << endl;
   cout << "main.cpp->main(), lowerHalf_addr: " << std::hex << lowerHalfAddr << endl;
+  write_mmapped_ranges("simgld-after_mem_reservation_main()", getpid());
   appLoader->runRtld(upperHalfAddr, lowerHalfAddr);
   return 0;
 }

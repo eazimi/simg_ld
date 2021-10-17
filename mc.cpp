@@ -100,7 +100,7 @@ void MC::handle_message(int socket, void* buffer)
   s_message_t base_message;
   memcpy(&base_message, static_cast<char*>(buffer), sizeof(base_message));
   auto str_message_type = str_messages[static_cast<int>(base_message.type)];
-  DLOG(INFO, "parent: child %d sent a %s message, socket = %d\n", base_message.pid, str_message_type.c_str(), socket);
+  DLOG(INFO, "mc: app %d sent a %s message, socket = %d\n", base_message.pid, str_message_type.c_str(), socket);
 
   base_message.pid = getpid();
   bool run_app     = false;
