@@ -32,6 +32,8 @@ void MC::run(char** argv)
   cout << "mc.cpp->run(), loadAddr: 0x" << std::hex << loadAddr << endl;
 
   auto appCount = cmdLineParams_->getAppCount();
+  // todo: delete the following line
+  appCount = 1;
   for (auto i = 0; i < appCount; i++) {
     // Create an AF_LOCAL socketpair used for exchanging messages
     // between the model-checker process (ourselves) and the model-checked
