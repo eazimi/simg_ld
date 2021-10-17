@@ -27,10 +27,6 @@ public:
     return userSpace_->reserve_mem_space(relativeDistFromStack, size);
   }
 
-  inline void *getUpperHalfAddr() const { return userSpace_->getUpperHalfAddr(); }  
-  inline void *getLowerHalfAddr() const { return userSpace_->getLowerHalfAddr(); }  
-  inline void setUpperHalfAddr(void* addr) const { userSpace_->setUpperHalfAddr(addr); }  
-  inline void setLowerHalfAddr(void* addr) const { userSpace_->setLowerHalfAddr(addr); }
 };
 
 #endif
