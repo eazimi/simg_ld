@@ -9,7 +9,11 @@ using namespace std;
 class UserSpace {
 public:
   explicit UserSpace() = default;
-  void* reserve_mem_space(unsigned long relativeDistFromStack, unsigned long size);
+  void* reserve_mem_space(unsigned long relativeDistFromStack, unsigned long size) const;
+  inline void* reserve_mem_space(void* addr, size_t len) const
+  {
+    return mmap(addr, len, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS | MAP_FIXED, -1, 0);
+  }
   void* get_stack_addr() const;
   void mmap_all_free_spaces();
 };
