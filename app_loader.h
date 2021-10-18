@@ -30,6 +30,8 @@ public:
 
   inline void* reserveMemSpace(void* addr, size_t len) const { return userSpace_->reserve_mem_space(addr, len); }
 
+  inline int releaseMemSpace(void* addr, size_t len) const { return userSpace_->release_mem_space(addr, len); }
+
   inline void* getStackAddr() const
   {
     return userSpace_->get_stack_addr();

@@ -14,6 +14,7 @@ public:
   {
     return mmap(addr, len, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS | MAP_FIXED, -1, 0);
   }
+  inline int release_mem_space(void* addr, size_t len) const { return munmap(addr, len); }
   void* get_stack_addr() const;
   void mmap_all_free_spaces();
 };

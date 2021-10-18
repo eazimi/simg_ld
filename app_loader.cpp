@@ -205,9 +205,10 @@ void AppLoader::runRtld(void* loadAddr, vector<string> app_params, int socket_id
 
 void AppLoader::runRtld(void* loadAddr, void* lowerHalfAddr)
 {
+  auto writeAddr = reserveMemSpace(loadAddr, PAGE_SIZE);
   char strAddr[32];
   strcpy(strAddr, to_string((unsigned long)lowerHalfAddr).c_str());
-  memcpy(loadAddr, (void*)strAddr, strlen(strAddr)+1); // copy '\0' too
+  memcpy(writeAddr, (void*)strAddr, strlen(strAddr)+1); // copy '\0' too
 
   int rc         = -1;
   // Load RTLD (ld.so)
