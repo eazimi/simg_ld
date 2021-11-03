@@ -21,7 +21,7 @@ private:
 public:
   explicit AppLoader();
   void runRtld(void* loadAddr, vector<string> app_params, int socket_id);
-  void runRtld(void* loadAddr, void* lowerHalfAddr);
+  void runRtld(void* loadAddr, void* dataAddr);
 
   inline void* reserveMemSpace(unsigned long relativeDistFromStack, unsigned long size) const
   {
