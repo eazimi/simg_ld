@@ -158,22 +158,22 @@ DynObjInfo AppLoader::load_lsdo(void* startAddr, const char* ld_name)
 
 // This function loads in ld.so, sets up a separate stack for it, and jumps
 // to the entry point of ld.so
-void AppLoader::runRtld(void* loadAddr, vector<string> app_params, int socket_id)
+void AppLoader::runRtld(void* app_addr, vector<string> app_params, int socket_id)
 {
   // Load RTLD (ld.so)
-  DynObjInfo ldso = load_lsdo(loadAddr, (char*)LD_NAME);
+  DynObjInfo ldso = load_lsdo(app_addr, (char*)LD_NAME);
 
   if (ldso.get_base_addr() == NULL || ldso.get_entry_point() == NULL) {
     DLOG(ERROR, "Error loading the runtime loader (%s). Exiting...\n", (char*)LD_NAME);
     return;
   }
-  cout << "mc, requested ldso addr: " << std::hex << loadAddr << " # real ldso addr: " << 
+  cout << "mc, requested ldso addr: " << std::hex << app_addr << " # real ldso addr: " << 
      std::hex << ldso.get_base_addr() << endl;
 
   // Create new stack region to be used by RTLD
-  auto stackStartAddr = (void*)((unsigned long)loadAddr + GB1);
+  auto stackStartAddr = (void*)((unsigned long)app_addr + GB1);
   void* newStack = stack_->createNewStack(ldso, stackStartAddr, app_params, socket_id);
-  cout << "mc, request stack addr: " << std::hex << stackStartAddr << " # real stack addr: " <<
+  cout << "mc, requested stack addr: " << std::hex << stackStartAddr << " # real stack addr: " <<
     std::hex << newStack << endl;
   if (!newStack) {
     DLOG(ERROR, "Error creating new stack for RTLD. Exiting...\n");
@@ -181,9 +181,9 @@ void AppLoader::runRtld(void* loadAddr, vector<string> app_params, int socket_id
   }
 
   // Create new heap region to be used by RTLD
-  void* heapStartAddr = (void*)((unsigned long)loadAddr + MB1500);
+  void* heapStartAddr = (void*)((unsigned long)app_addr + MB1500);
   void* newHeap = heap_->createNewHeap(heapStartAddr);
-  cout << "mc, request heap addr: " << std::hex << heapStartAddr << " # real heap addr: " <<
+  cout << "mc, requested heap addr: " << std::hex << heapStartAddr << " # real heap addr: " <<
     std::hex << newHeap << endl;
   if (!newHeap) {
     DLOG(ERROR, "Error creating new heap for RTLD. Exiting...\n");
@@ -197,22 +197,37 @@ void AppLoader::runRtld(void* loadAddr, vector<string> app_params, int socket_id
 
   // Change the stack pointer to point to the new stack and jump into ld.so
   asm volatile(CLEAN_FOR_64_BIT(mov %0, %%esp;) : : "g"(newStack) : "memory");
+
+  // const string maps_path = "/proc/self/maps";
+  // // vector<string> tokens{"/simg_ld", "[heap]", "[stack]", "[vvar]", "[vdso]"};
+  // vector<string> tokens{"/usr/lib64/libpthread-2.33.so", "/usr/lib64/libc-2.33.so", "/usr/lib64/libm-2.33.so",
+  //                       "/usr/lib64/libevent-2.1.so.7.0.1"};
+  // vector<pair<unsigned long, unsigned long>> all_addr = getRanges(maps_path, tokens);
+  // for (auto it : all_addr) {
+  //   auto ret = munmap((void*)it.first, it.second - it.first);
+  //   if (ret != 0)
+  //     cout << "munmap was not successful: " << strerror(errno) << " # " << std::hex << it.first << " - " << std::hex
+  //          << it.second << endl;
+  // }
+  // write_mmapped_ranges("app-before_jump_after_release-runRtld()", getpid());
+
   asm volatile("jmp *%0" : : "g"(ldso_entrypoint) : "memory");
 
   DLOG(ERROR, "Error: RTLD returned instead of passing the control to the created stack. Panic...\n");
   exit(-1);
 }
 
-void AppLoader::runRtld(void* loadAddr, void* dataAddr)
+void AppLoader::runRtld(void* mcAddr, void* appAddr)
 {
-  auto writeAddr = reserveMemSpace(loadAddr, PAGE_SIZE);
+  auto varSize = PAGE_SIZE;
+  auto writeAddr = reserveMemSpace(mcAddr, varSize);
   char strAddr[32];
-  strcpy(strAddr, to_string((unsigned long)dataAddr).c_str());
+  strcpy(strAddr, to_string((unsigned long)appAddr).c_str());
   memcpy(writeAddr, (void*)strAddr, strlen(strAddr)+1); // copy '\0' too
 
   int rc         = -1;
   // Load RTLD (ld.so)
-  void* ldsoAddr      = (void*)((unsigned long)loadAddr + PAGE_SIZE);
+  void* ldsoAddr      = (void*)((unsigned long)mcAddr + varSize);
   DynObjInfo ldso = load_lsdo(ldsoAddr, (char*)LD_NAME);
 
   if (ldso.get_base_addr() == NULL || ldso.get_entry_point() == NULL) {
@@ -223,9 +238,9 @@ void AppLoader::runRtld(void* loadAddr, void* dataAddr)
      std::hex << ldso.get_base_addr() << endl;
 
   // Create new stack region to be used by RTLD
-  auto stackStartAddr = (void*)((unsigned long)loadAddr + GB1);
+  auto stackStartAddr = (void*)((unsigned long)mcAddr + GB1);
   void* newStack = stack_->createNewStack(ldso, stackStartAddr);
-  cout << "simgld, request stack addr: " << std::hex << stackStartAddr << " # real stack addr: " <<
+  cout << "simgld, requested stack addr: " << std::hex << stackStartAddr << " # real stack addr: " <<
     std::hex << newStack << endl;
   if (!newStack) {
     DLOG(ERROR, "Error creating new stack for RTLD. Exiting...\n");
@@ -233,9 +248,9 @@ void AppLoader::runRtld(void* loadAddr, void* dataAddr)
   }
 
   // Create new heap region to be used by RTLD
-  void* heapStartAddr = (void*)((unsigned long)loadAddr + MB1500);
+  void* heapStartAddr = (void*)((unsigned long)mcAddr + MB1500);
   void* newHeap = heap_->createNewHeap(heapStartAddr);
-  cout << "simgld, request heap addr: " << std::hex << heapStartAddr << " # real heap addr: " <<
+  cout << "simgld, requested heap addr: " << std::hex << heapStartAddr << " # real heap addr: " <<
     std::hex << newHeap << endl;
   if (!newHeap) {
     DLOG(ERROR, "Error creating new heap for RTLD. Exiting...\n");

@@ -28,8 +28,8 @@ void MC::run(char** argv)
   }
 
   auto upperHalfAddr = (unsigned long)appLoader_->getStackAddr() - MB5500;
-  unsigned long loadAddr = atol((char*)upperHalfAddr);
-  cout << "mc.cpp->run(), loadAddr: 0x" << std::hex << loadAddr << endl;
+  unsigned long appAddr = atol((char*)upperHalfAddr);
+  cout << "mc.cpp->run(), appAddr: 0x" << std::hex << appAddr << endl;
 
   auto appCount = cmdLineParams_->getAppCount();
   // todo: delete the following line
@@ -62,7 +62,7 @@ void MC::run(char** argv)
 
       // todo: 0 must be replaced with proper value
       auto appParams = cmdLineParams_->getAppParams(0);
-      appLoader_->runRtld((void*)loadAddr, appParams, sockets[0]);
+      appLoader_->runRtld((void*)appAddr, appParams, sockets[0]);
     } else // parent
     {
       allApps.push_back(pid);
@@ -102,7 +102,8 @@ void MC::handle_message(int socket, void* buffer)
   s_message_t base_message;
   memcpy(&base_message, static_cast<char*>(buffer), sizeof(base_message));
   auto str_message_type = str_messages[static_cast<int>(base_message.type)];
-  DLOG(INFO, "mc: app %d sent a %s message, socket = %d\n", base_message.pid, str_message_type.c_str(), socket);
+  DLOG(INFO, "mc %d: app %d sent a %s message, socket = %d\n", getpid(), base_message.pid, 
+            str_message_type.c_str(), socket);
 
   base_message.pid = getpid();
   bool run_app     = false;
