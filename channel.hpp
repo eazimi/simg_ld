@@ -6,14 +6,16 @@
 
 using namespace std;
 
-enum class MessageType { NONE, READY, CONTINUE, FINISH, DONE };
+enum class MessageType { NONE, INITIALIZED, READY, CONTINUE, FINISH, DONE, LAYOUT};
 
 /* Child->Parent */
 struct s_message_t {
   MessageType type;
   pid_t pid;
   std::uint64_t start_addr;
-  std::uint64_t end_addr;
+  std::uint64_t end_addr;  
+  int memlayout_size;
+  char memlayout[256][512];  
 };
 
 class Channel {

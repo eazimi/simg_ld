@@ -19,6 +19,12 @@ MC::MC()
 
 void MC::run(char** argv)
 {
+  write_mmapped_ranges("mc-run()_before_runRtld()", getpid());
+  setMemoryLayout();
+  // cout << "MC::run()-> memory layout: " << endl;
+  // for(auto str:initialMemLayout)
+  //   cout << str << endl;
+
   auto param_index = cmdLineParams_->process_argv(argv);
   if (param_index == -1) {
     DLOG(ERROR, "Command line parameters are invalid\n");
@@ -98,27 +104,62 @@ void MC::run(char** argv)
 
 void MC::handle_message(int socket, void* buffer)
 {
-  vector<string> str_messages{"NONE", "READY", "CONTINUE", "FINISH", "DONE"};
-  s_message_t base_message;
-  memcpy(&base_message, static_cast<char*>(buffer), sizeof(base_message));
-  auto str_message_type = str_messages[static_cast<int>(base_message.type)];
-  DLOG(INFO, "mc %d: app %d sent a %s message, socket = %d\n", getpid(), base_message.pid, 
+  vector<string> str_messages{"NONE", "INITIALIZED", "READY", "CONTINUE", "FINISH", "DONE"};
+
+  auto message_type = ((s_message_t*)(buffer))->type;
+  auto str_message_type = str_messages[static_cast<int>(((s_message_t*)(buffer))->type)];
+  auto app_pid = ((s_message_t*)(buffer))->pid;
+
+  DLOG(INFO, "mc %d: app %d sent a %s message, socket = %d\n", getpid(), app_pid, 
             str_message_type.c_str(), socket);
 
+  s_message_t base_message;
   base_message.pid = getpid();
-  bool run_app     = false;
-  if (base_message.type == MessageType::READY) {
-    base_message.type = MessageType::CONTINUE;
-  } else if (base_message.type == MessageType::FINISH) {
+  base_message.type = MessageType::NONE;
+  if (message_type == MessageType::INITIALIZED) {
+    // make the variables on the heap, it works because child sees parent's heap 
+    // char** memlayout = new char*[256];
+    auto index = 0;
+    for(auto str:initialMemLayout)
+    {
+      auto src = str.c_str();
+      memcpy(base_message.memlayout[index], src, strlen(src)+1); // copy the null-charachter too
+      cout << base_message.memlayout[index] << endl;
+      cout << src << endl;
+      cout << std::dec << strlen(src) << endl;
+      cout << "*******************************************" << endl;
+      ++index;
+    }
+    // base_message.memlayout = memlayout;
+    base_message.memlayout_size = index;
+    base_message.type           = MessageType::LAYOUT;
+    cout << "layout, " << std::dec << index << endl;
+  } else if (message_type == MessageType::READY) {
+    base_message.type = MessageType::CONTINUE;    
+  } else if (message_type == MessageType::FINISH) {
     base_message.type = MessageType::DONE;
-    run_app           = true;
   }
   syncProc_->get_channel(socket).send(base_message);
-  if (run_app) { // 0: ldname, 1: param_index, 2: param_count
-    // run_rtld(args->ld_name(), args->param_index(), args->param_count(1));
-  }
+
   // if (!sync_proc->handle_message(buffer.data(), size))
   //   sync_proc->break_loop();
+}
+
+void MC::setMemoryLayout()
+{
+  vector<string> memlayout;
+  string mapsPath = "/proc/self/maps";
+  filebuf fb;
+  string line;
+  if(fb.open(mapsPath, ios_base::in))
+  {
+    istream is(&fb);
+    while(getline(is, line))
+      memlayout.push_back(line);
+    fb.close();
+  }
+  initialMemLayout.clear();
+  initialMemLayout = memlayout;
 }
 
 void MC::handle_waitpid()

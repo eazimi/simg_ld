@@ -9,6 +9,7 @@ using namespace std;
 
 class MC {
 private:
+  vector<string> initialMemLayout;
   std::list<int> allSockets;
   std::list<pid_t> allApps;
   unique_ptr<cmdLineParams> cmdLineParams_;
@@ -16,6 +17,7 @@ private:
   unique_ptr<SyncProc> syncProc_;
   void handle_message(int socket, void* buffer);
   void handle_waitpid();
+  void setMemoryLayout(); 
 
 public:
   explicit MC();

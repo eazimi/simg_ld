@@ -87,7 +87,7 @@ void App::init(const char* socket)
 
   write_mmapped_ranges("app-completely_loaded-init()", getpid()); 
 
-  s_message_t message{MessageType::READY, getpid()};
+  s_message_t message{MessageType::INITIALIZED, getpid()};
   assert(channel_->send(message) == 0 && "Could not send the initial message.");
   handle_message();
   DLOG(ERROR, "never reach this line ...\n");
@@ -95,10 +95,10 @@ void App::init(const char* socket)
 
 void App::handle_message() const
 {
-  vector<string> str_messages{"NONE", "READY", "CONTINUE", "FINISH", "DONE"};
+  // cout << "in handle message" << endl;
   bool loop = true;  
   while (loop) {
-    std::array<char, MESSAGE_LENGTH> message_buffer;
+    std::array<char, sizeof(s_message_t)> message_buffer;
     ssize_t received_size = channel_->receive(message_buffer.data(), message_buffer.size());
     assert(received_size >= 0 && "Could not receive commands from the parent");
 
@@ -111,6 +111,18 @@ void App::handle_message() const
         base_message.pid  = getpid();
         channel_->send(base_message);
         break;
+
+      case MessageType::LAYOUT: {        
+        auto memlayout      = message->memlayout;
+        auto memlayout_size = message->memlayout_size;
+        cout << "int app, layout message " << memlayout_size << endl;
+        for (auto i = 0; i < memlayout_size; i++)
+          cout << memlayout[i] << endl;
+        s_message_t base_message;
+        base_message.type = MessageType::READY;
+        base_message.pid  = getpid();
+        channel_->send(base_message);
+      } break;
 
       case MessageType::DONE:
         DLOG(INFO, "app %d: mc sent a %s message\n", getpid(), "DONE");
