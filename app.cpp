@@ -16,16 +16,31 @@ App::App(const char* socket)
   init(socket);
 }
 
-void App::release_parent_memory_region()
+void App::release_parent_memory_region(vector<string> memlayout) const
 {
-  const string maps_path = "/proc/self/maps";
-  vector<string> tokens{"/simg_ld", "[heap]", "[stack]", "[vvar]", "[vdso]"};
-  vector<pair<unsigned long, unsigned long>> all_addr = getRanges(maps_path, tokens);
-  for (auto it : all_addr) {
-    auto ret = munmap((void*)it.first, it.second - it.first);
-    if (ret != 0)
-      cout << "munmap was not successful: " << strerror(errno) << " # " << std::hex << it.first << " - " << std::hex
-           << it.second << endl;
+  // look for /usr/lib64/
+  const char* token_lib = "/usr/lib64/";
+  // const char* token_mc = "/build/mc";
+  const char* token_simgld = "/build/simgld";
+  const char* token_space = " ";
+  const char* token_dash = "-";
+  auto memlayout_size = memlayout.size();
+  for (auto i = 0; i < memlayout_size; i++) {
+    auto line = const_cast<char*>(memlayout[i].c_str());
+    auto ret_lib = strstr(line, token_lib);
+    // auto ret_mc = strstr(line, token_mc);
+    auto ret_simgld = strstr(line, token_simgld);
+    if((ret_lib == nullptr) /*&& (ret_mc == nullptr)*/ && (ret_simgld == nullptr))
+      continue;
+    auto token = strtok(line, token_space);    
+    auto str_begin = strtok(token, token_dash);
+    auto begin_addr = strtoul(str_begin, nullptr, 16);
+    auto str_end = &token[strlen(str_begin)+1];
+    auto end_addr = strtoul(str_end, nullptr, 16);
+    auto ret_munmap = munmap((void*)begin_addr, end_addr-begin_addr);
+    if (ret_munmap != 0)
+      DLOG(ERROR, "app %d: munmap %s-%s was NOT successful. err: %s\n", getpid(), str_begin, 
+                  str_end, strerror(errno));
   }
 }
 
@@ -115,10 +130,16 @@ void App::handle_message() const
         auto memlayout      = message->memlayout;
         auto memlayout_size = message->memlayout_size;
         DLOG(INFO, "app %d: mc sent a %s message\n", getpid(), "LAYOUT");
-        cout << "memory layout of mc:" << endl;
+        vector<string> vec_memlayout;
+        // cout << "memory layout of mc:" << endl;
         for (auto i = 0; i < memlayout_size; i++)
-          cout << memlayout[i] << endl;
-
+        {
+          vec_memlayout.push_back(memlayout[i]);
+          // cout << memlayout[i] << endl;
+        }
+        
+        release_parent_memory_region(vec_memlayout);
+        write_mmapped_ranges("app-after_release_mc_mem-handleMessage()", getpid());
         s_message_t base_message;
         base_message.type = MessageType::READY;
         base_message.pid  = getpid();
