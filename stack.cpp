@@ -215,15 +215,6 @@ void* Stack::deepCopyStack(void* newStack, const void* origStack, size_t len, co
     off_t argvDelta = (uintptr_t)origArgv[i] - (uintptr_t)origArgv;
     newArgv[i]      = (char*)((uintptr_t)newArgv + (uintptr_t)argvDelta);
   }
-  // strcpy(newArgv[0], app);
-
-  // cout << "main.cpp -> deepCopyStack(), printing parameters in orgiStack" << endl;
-  // for(auto i=0; newArgv[i] != nullptr; i++)
-  //   cout << i << ": " << origArgv[i] << endl;
-
-  // cout << "main.cpp -> deepCopyStack(), printing parameters in newStack" << endl;
-  // for(auto i=0; newArgv[i] != nullptr; i++)
-  //   cout << i << ": " << newArgv[i] << endl;
 
   // Patch the env vector in the new stack
   for (int i = 0; origEnv[i] != nullptr; i++) {

@@ -83,19 +83,18 @@ void App::init(const char* socket)
 
   DLOG(NOISE, "app %d: before SIGSTOP\n", getpid());
   assert((errno == 0 && raise(SIGSTOP) == 0) && str); // Wait for the parent to awake me
-  DLOG(NOISE, "app %d: PTRACE_CONT received\n", getpid()); 
+  DLOG(NOISE, "app %d: PTRACE_CONT received\n", getpid());
 
-  write_mmapped_ranges("app-completely_loaded-init()", getpid()); 
+  write_mmapped_ranges("app-completely_loaded-init()", getpid());
 
-  s_message_t message{MessageType::INITIALIZED, getpid()};
-  assert(channel_->send(message) == 0 && "Could not send the initial message.");
+  s_message_t message{MessageType::LOADED, getpid()};
+  assert(channel_->send(message) == 0 && "Could not send the LOADED message.");
   handle_message();
   DLOG(ERROR, "never reach this line ...\n");
 }
 
 void App::handle_message() const
 {
-  // cout << "in handle message" << endl;
   bool loop = true;  
   while (loop) {
     std::array<char, sizeof(s_message_t)> message_buffer;
@@ -112,12 +111,14 @@ void App::handle_message() const
         channel_->send(base_message);
         break;
 
-      case MessageType::LAYOUT: {        
+      case MessageType::LAYOUT: {
         auto memlayout      = message->memlayout;
         auto memlayout_size = message->memlayout_size;
-        cout << "int app, layout message " << memlayout_size << endl;
+        DLOG(INFO, "app %d: mc sent a %s message\n", getpid(), "LAYOUT");
+        cout << "memory layout of mc:" << endl;
         for (auto i = 0; i < memlayout_size; i++)
           cout << memlayout[i] << endl;
+
         s_message_t base_message;
         base_message.type = MessageType::READY;
         base_message.pid  = getpid();

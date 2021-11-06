@@ -6,7 +6,7 @@
 
 using namespace std;
 
-enum class MessageType { NONE, INITIALIZED, READY, CONTINUE, FINISH, DONE, LAYOUT};
+enum class MessageType { NONE, LOADED, READY, CONTINUE, FINISH, DONE, LAYOUT};
 
 /* Child->Parent */
 struct s_message_t {

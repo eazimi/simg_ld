@@ -197,20 +197,6 @@ void AppLoader::runRtld(void* app_addr, vector<string> app_params, int socket_id
 
   // Change the stack pointer to point to the new stack and jump into ld.so
   asm volatile(CLEAN_FOR_64_BIT(mov %0, %%esp;) : : "g"(newStack) : "memory");
-
-  // const string maps_path = "/proc/self/maps";
-  // // vector<string> tokens{"/simg_ld", "[heap]", "[stack]", "[vvar]", "[vdso]"};
-  // vector<string> tokens{"/usr/lib64/libpthread-2.33.so", "/usr/lib64/libc-2.33.so", "/usr/lib64/libm-2.33.so",
-  //                       "/usr/lib64/libevent-2.1.so.7.0.1"};
-  // vector<pair<unsigned long, unsigned long>> all_addr = getRanges(maps_path, tokens);
-  // for (auto it : all_addr) {
-  //   auto ret = munmap((void*)it.first, it.second - it.first);
-  //   if (ret != 0)
-  //     cout << "munmap was not successful: " << strerror(errno) << " # " << std::hex << it.first << " - " << std::hex
-  //          << it.second << endl;
-  // }
-  // write_mmapped_ranges("app-before_jump_after_release-runRtld()", getpid());
-
   asm volatile("jmp *%0" : : "g"(ldso_entrypoint) : "memory");
 
   DLOG(ERROR, "Error: RTLD returned instead of passing the control to the created stack. Panic...\n");
@@ -262,7 +248,6 @@ void AppLoader::runRtld(void* mcAddr, void* appAddr)
   // Pointer to the ld.so entry point
   void* ldso_entrypoint = ldso.get_entry_point();
 
-  // cout << "main.cpp -> appLoader->runRtld(), before jump" << endl;
   // Change the stack pointer to point to the new stack and jump into ld.so
   asm volatile(CLEAN_FOR_64_BIT(mov %0, %%esp;) : : "g"(newStack) : "memory");
   asm volatile("jmp *%0" : : "g"(ldso_entrypoint) : "memory");

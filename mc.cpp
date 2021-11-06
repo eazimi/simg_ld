@@ -19,11 +19,8 @@ MC::MC()
 
 void MC::run(char** argv)
 {
-  write_mmapped_ranges("mc-run()_before_runRtld()", getpid());
+  write_mmapped_ranges("mc-before_runRtld()-run()", getpid());
   setMemoryLayout();
-  // cout << "MC::run()-> memory layout: " << endl;
-  // for(auto str:initialMemLayout)
-  //   cout << str << endl;
 
   auto param_index = cmdLineParams_->process_argv(argv);
   if (param_index == -1) {
@@ -104,7 +101,7 @@ void MC::run(char** argv)
 
 void MC::handle_message(int socket, void* buffer)
 {
-  vector<string> str_messages{"NONE", "INITIALIZED", "READY", "CONTINUE", "FINISH", "DONE"};
+  vector<string> str_messages{"NONE", "LOADED", "READY", "CONTINUE", "FINISH", "DONE"};
 
   auto message_type = ((s_message_t*)(buffer))->type;
   auto str_message_type = str_messages[static_cast<int>(((s_message_t*)(buffer))->type)];
@@ -116,24 +113,17 @@ void MC::handle_message(int socket, void* buffer)
   s_message_t base_message;
   base_message.pid = getpid();
   base_message.type = MessageType::NONE;
-  if (message_type == MessageType::INITIALIZED) {
-    // make the variables on the heap, it works because child sees parent's heap 
-    // char** memlayout = new char*[256];
+  if (message_type == MessageType::LOADED) {
     auto index = 0;
     for(auto str:initialMemLayout)
     {
       auto src = str.c_str();
       memcpy(base_message.memlayout[index], src, strlen(src)+1); // copy the null-charachter too
-      cout << base_message.memlayout[index] << endl;
-      cout << src << endl;
-      cout << std::dec << strlen(src) << endl;
-      cout << "*******************************************" << endl;
       ++index;
     }
     // base_message.memlayout = memlayout;
     base_message.memlayout_size = index;
     base_message.type           = MessageType::LAYOUT;
-    cout << "layout, " << std::dec << index << endl;
   } else if (message_type == MessageType::READY) {
     base_message.type = MessageType::CONTINUE;    
   } else if (message_type == MessageType::FINISH) {

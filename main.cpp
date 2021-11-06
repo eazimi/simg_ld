@@ -2,19 +2,6 @@
 
 using namespace std;
 
-// void printListofUsedLibs()
-// {
-//   std::string maps_path = "/proc/self/maps";
-//   std::filebuf fb;
-//   std::string line;
-//   if (fb.open(maps_path, std::ios_base::in)) {
-//     std::istream is(&fb);
-//     while (std::getline(is, line))
-//       std::cout << line << std::endl;
-//     fb.close();
-//   }
-// }
-
 int main(int argc, char** argv, char** env)
 {
   unique_ptr<AppLoader> appLoader = make_unique<AppLoader>();
@@ -37,9 +24,6 @@ int main(int argc, char** argv, char** env)
     return -1;
   }
   write_mmapped_ranges("simgld-after_releaseMemSpace_main()", getpid());
-
-  // cout << "parent pid: " << std::dec << getpid() << endl;
-  // print_mmapped_ranges();
 
   appLoader->runRtld(mcAddr, appAddr);
   return 0;
