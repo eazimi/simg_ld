@@ -7,8 +7,14 @@ set(CMAKE_EXE_LINKER_FLAGS "-static-libgcc -static-libstdc++")
 set(CMAKE_COLOR_MAKEFILE ON)
 set(CMAKE_BUILD_TYPE Debug)
 
-project(simg_ld LANGUAGES CXX C)
-find_library(LIBEVENT_LIBRARY NAMES event)
+project(simgld C CXX)
+
+add_library(wrapper SHARED   
+    wrapper.cpp
+)
+# set_target_properties(wrapper PROPERTIES SOVERSION 1)
+set_property(TARGET wrapper PROPERTY POSITION_INDEPENDENT_CODE ON)
+target_link_libraries(wrapper ${CMAKE_DL_LIBS})
 
 add_executable(app
     app_main.cpp
@@ -41,6 +47,7 @@ add_executable(mc
     cmdline_params.h
     cmdline_params.cpp
     )
+find_library(LIBEVENT_LIBRARY NAMES event)    
 target_link_libraries(mc ${LIBEVENT_LIBRARY})    
 
 add_executable(simgld
