@@ -21,26 +21,35 @@ void App::release_parent_memory_region(vector<string> memlayout) const
   // look for /usr/lib64/
   const char* token_lib = "/usr/lib64/";
   // const char* token_mc = "/build/mc";
+  const char* token_stack = "[stack]";
+  const char* token_vvar = "[vvar]";
+  const char* token_vdso = "[vdso]";
+  // const char* token_vsys = "[vsyscall]";
   const char* token_simgld = "/build/simgld";
-  const char* token_space = " ";
-  const char* token_dash = "-";
-  auto memlayout_size = memlayout.size();
+  const char* token_space  = " ";
+  const char* token_dash   = "-";
+  auto memlayout_size      = memlayout.size();
   for (auto i = 0; i < memlayout_size; i++) {
-    auto line = const_cast<char*>(memlayout[i].c_str());
+    auto line    = const_cast<char*>(memlayout[i].c_str());
     auto ret_lib = strstr(line, token_lib);
     // auto ret_mc = strstr(line, token_mc);
+    auto ret_stack = strstr(line, token_stack);
+    auto ret_vvar = strstr(line, token_vvar);
+    auto ret_vdso = strstr(line, token_vdso);
+    // auto ret_vsys = strstr(line, token_vsys);
     auto ret_simgld = strstr(line, token_simgld);
-    if((ret_lib == nullptr) /*&& (ret_mc == nullptr)*/ && (ret_simgld == nullptr))
+    if((ret_lib == nullptr) && (ret_simgld == nullptr)
+            && (ret_stack == nullptr) && (ret_vvar == nullptr) && (ret_vdso == nullptr) 
+            /* && (ret_mc == nullptr) && (ret_vsys == nullptr) */)
       continue;
-    auto token = strtok(line, token_space);    
-    auto str_begin = strtok(token, token_dash);
+    auto token      = strtok(line, token_space);
+    auto str_begin  = strtok(token, token_dash);
     auto begin_addr = strtoul(str_begin, nullptr, 16);
-    auto str_end = &token[strlen(str_begin)+1];
-    auto end_addr = strtoul(str_end, nullptr, 16);
-    auto ret_munmap = munmap((void*)begin_addr, end_addr-begin_addr);
+    auto str_end    = &token[strlen(str_begin) + 1];
+    auto end_addr   = strtoul(str_end, nullptr, 16);
+    auto ret_munmap = munmap((void*)begin_addr, end_addr - begin_addr);
     if (ret_munmap != 0)
-      DLOG(ERROR, "app %d: munmap %s-%s was NOT successful. err: %s\n", getpid(), str_begin, 
-                  str_end, strerror(errno));
+      DLOG(ERROR, "app %d: munmap %s-%s was NOT successful. err: %s\n", getpid(), str_begin, str_end, strerror(errno));
   }
 }
 
