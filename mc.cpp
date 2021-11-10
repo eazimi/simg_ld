@@ -65,7 +65,9 @@ void MC::run(char** argv)
 
       // todo: 0 must be replaced with proper value
       auto appParams = cmdLineParams_->getAppParams(0);
+      // setenv("LD_PRELOAD", "/home/eazimi/projects/simgld/build/libwrapper.so", 1);
       appLoader_->runRtld((void*)appAddr, appParams, sockets[0]);
+      // while(true);
     } else // parent
     {
       allApps.push_back(pid);

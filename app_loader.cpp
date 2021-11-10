@@ -195,6 +195,7 @@ void AppLoader::runRtld(void* app_addr, vector<string> app_params, int socket_id
   // Pointer to the ld.so entry point
   void* ldso_entrypoint = ldso.get_entry_point();
 
+  cout << "app-before_jump-runRtld()" << endl;
   // Change the stack pointer to point to the new stack and jump into ld.so
   asm volatile(CLEAN_FOR_64_BIT(mov %0, %%esp;) : : "g"(newStack) : "memory");
   asm volatile("jmp *%0" : : "g"(ldso_entrypoint) : "memory");

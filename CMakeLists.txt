@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.5)
 message(STATUS "Cmake version ${CMAKE_MAJOR_VERSION}.${CMAKE_MINOR_VERSION}.${CMAKE_PATCH_VERSION}")
 set(CMAKE_CXX_COMPILER "/usr/bin/g++")
 
-set(BUILD_SHARED_LIBS OFF)
+set(BUILD_SHARED_LIBS ON)
 set(CMAKE_EXE_LINKER_FLAGS "-static-libgcc -static-libstdc++")
 set(CMAKE_COLOR_MAKEFILE ON)
 set(CMAKE_BUILD_TYPE Debug)
@@ -12,7 +12,6 @@ project(simgld C CXX)
 add_library(wrapper SHARED   
     wrapper.cpp
 )
-# set_target_properties(wrapper PROPERTIES SOVERSION 1)
 set_property(TARGET wrapper PROPERTY POSITION_INDEPENDENT_CODE ON)
 target_link_libraries(wrapper ${CMAKE_DL_LIBS})
 
@@ -48,7 +47,8 @@ add_executable(mc
     cmdline_params.cpp
     )
 find_library(LIBEVENT_LIBRARY NAMES event)    
-target_link_libraries(mc ${LIBEVENT_LIBRARY})    
+target_link_libraries(mc ${LIBEVENT_LIBRARY})
+# set(ENV${LD_PRELOAD} "/home/eazimi/projects/simgld/build/libwrapper.so")   
 
 add_executable(simgld
     stack.h
