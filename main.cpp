@@ -6,7 +6,7 @@ int main(int argc, char** argv, char** env)
 {
   // auto ret_setenv = setenv("LD_PRELOAD", "/home/eazimi/projects/simgld/build/libwrapper.so", 1);
   // cout << "ret_setend: " << ret_setenv << endl;
-  cout << "LD_PRELOAD=" << getenv("LD_PRELOAD") << endl;
+  // cout << "LD_PRELOAD=" << getenv("LD_PRELOAD") << endl;
 
   // filebuf fb;
   // std::string path = "./main_env.txt";
