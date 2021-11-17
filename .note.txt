@@ -1,0 +1,36 @@
+LD_PRELOAD=./libwrapper.so valgrind --trace-children=yes ./simgld ./mc ./app -- /usr/bin/ls . 2>&1 | cat > ./valgrind_log.txt
+
+g++ -Wall -g -static main.cpp ulexec.h ulexec.cpp util.hpp -o simg_ld
+
+g++ -Wall -g -static main.cpp loader.h loader.cpp switch_context.h switch_context.cpp ulexec.h ulexec.cpp util.hpp -o simg_ld
+
+g++ -Wall -g -static main.cpp loader.h loader.cpp switch_context.h switch_context.cpp -o simg_ld
+
+// to find program interpreter
+readelf -l /usr/bin/ls | grep 'Requesting' | cut -d':' -f2 | tr -d ' ]';
+or
+readelf -l /usr/bin/ls
+
+// read elf header
+readelf -h /usr/bin/ls
+
+# steps
+trying to load /usr/bin/ls
+1. check for, and load, the dynamic linker
+2. load the main binary
+3. initialize the stack
+-----------------------------------------
+    [ 0 ]  <-- top of the stack
+    [ envp strings ]
+    [ 0 ]
+    [ argv strings ]
+    [ 0 ]
+    [ auxv ]
+    [ 0 ]
+    [ envp ]
+    [ 0 ]
+    [ argv ]
+    [ argc ] <-- stack pointer
+-----------------------------------------
+4. determine entry point
+5. transfer control of execution
