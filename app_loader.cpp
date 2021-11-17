@@ -1,9 +1,14 @@
-#include "app_loader.h"
-#include "global.hpp"
+#include <asm/prctl.h> /* Definition of ARCH_* constants */
 #include <assert.h>
 #include <cstring>
 #include <fcntl.h>
+#include <sys/syscall.h> /* Definition of SYS_* constants */
 #include <unistd.h>
+
+#include "app_loader.h"
+#include "global.hpp"
+#include "trampoline.h"
+#include "trampoline_wrappers.hpp"
 
 AppLoader::AppLoader()
 {
@@ -153,6 +158,18 @@ DynObjInfo AppLoader::load_lsdo(void* startAddr, const char* ld_name)
   auto entryPoint = (void*)((unsigned long)baseAddr + (unsigned long)cmd_entry);
   info.set_base_addr(baseAddr);
   info.set_entry_point(entryPoint);
+
+  int ld_so_fd = open(ld_name, O_RDONLY);
+  unique_ptr<Trampoline> trampoline = make_unique<Trampoline>();
+  auto mmap_offset = trampoline->getSymbolOffset(ld_so_fd, ld_name, "mmap");
+  auto sbrk_offset = trampoline->getSymbolOffset(ld_so_fd, ld_name, "sbrk");
+  close(ld_so_fd);
+
+  assert(mmap_offset && "retreived wrong value for mmap_offet in ldso");
+  assert(sbrk_offset && "retreived wrong value for sbrk_offet in ldso");
+  info.set_mmap_addr((void*)((unsigned long)baseAddr + (unsigned long)mmap_offset));
+  info.set_sbrk_addr ((void*)((unsigned long)baseAddr + (unsigned long)sbrk_offset));
+
   return info;
 }
 
@@ -162,6 +179,11 @@ void AppLoader::runRtld(void* app_addr, vector<string> app_params, int socket_id
 {
   // Load RTLD (ld.so)
   DynObjInfo ldso = load_lsdo(app_addr, (char*)LD_NAME);
+
+  if (syscall(SYS_arch_prctl, ARCH_GET_FS, &lhFsAddr) < 0) {
+    DLOG(ERROR, "Could not retrieve lower half's fs. Error: %s. Exiting...\n", strerror(errno));
+    return;
+  }
 
   if (ldso.get_base_addr() == NULL || ldso.get_entry_point() == NULL) {
     DLOG(ERROR, "Error loading the runtime loader (%s). Exiting...\n", (char*)LD_NAME);
@@ -192,10 +214,26 @@ void AppLoader::runRtld(void* app_addr, vector<string> app_params, int socket_id
 
   write_mmapped_ranges("app-before_jump-runRtld()", getpid());
 
-  // Pointer to the ld.so entry point
-  void* ldso_entrypoint = ldso.get_entry_point();
+  // insert a trampoline from ldso mmap address to mmapWrapper
+  unique_ptr<Trampoline> trampoline = make_unique<Trampoline>();
+  // auto rc = trampoline->insertTrampoline(ldso.get_mmap_addr(), (void *)&mmapTrampoline);
+  // if (rc < 0) {
+  //   DLOG(ERROR, "Error inserting trampoline for mmap. Exiting...\n");
+  //   exit(-1);
+  // }
+
+  // // insert a trampoline from ldso sbrk address to sbrkWrapper
+  // rc = trampoline->insertTrampoline(ldso.sbrkAddr, (void *)&sbrkWrapper);
+  // if (rc < 0) {
+  //   DLOG(ERROR, "Error inserting trampoline for sbrk. Exiting...\n");
+  //   exit(-1);
+  // }
 
   cout << "app-before_jump-runRtld()" << endl;
+
+  // Pointer to the ld.so entry point
+  void* ldso_entrypoint = ldso.get_entry_point();
+  
   // Change the stack pointer to point to the new stack and jump into ld.so
   asm volatile(CLEAN_FOR_64_BIT(mov %0, %%esp;) : : "g"(newStack) : "memory");
   asm volatile("jmp *%0" : : "g"(ldso_entrypoint) : "memory");

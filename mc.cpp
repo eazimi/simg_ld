@@ -1,5 +1,3 @@
-#include "mc.h"
-#include "global.hpp"
 #include <algorithm>
 #include <assert.h>
 #include <fcntl.h>
@@ -9,6 +7,9 @@
 #include <sys/socket.h>
 #include <sys/types.h>
 #include <sys/wait.h>
+
+#include "mc.h"
+#include "global.hpp"
 
 MC::MC()
 {

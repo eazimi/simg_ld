@@ -41,6 +41,11 @@ add_executable(mc
     user_space.cpp
     app_loader.h
     app_loader.cpp
+    trampoline.h
+    trampoline.cpp
+    trampoline_wrappers.hpp
+    switch_context.h
+    switch_context.cpp
     mc.h
     mc.cpp
     cmdline_params.h
@@ -58,6 +63,11 @@ add_executable(simgld
     user_space.cpp
     app_loader.h
     app_loader.cpp
+    trampoline.h
+    trampoline.cpp
+    trampoline_wrappers.hpp
+    switch_context.h
+    switch_context.cpp
     main.cpp
 )
 target_link_libraries(simgld -static)
