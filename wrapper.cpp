@@ -16,7 +16,7 @@ void* real_mmap(void* addr, size_t length, int prot, int flags, int fd, off_t of
 
 void* mmap(void* addr, size_t length, int prot, int flags, int fd, off_t offset)
 {
-  cout << "libwrapper, mmap()" << endl;
+  puts("libwrapper, mmap()"); 
   return real_mmap(addr, length, prot, flags, fd, offset);
 
   // cout << "libwrapper, mmap()" << endl;
