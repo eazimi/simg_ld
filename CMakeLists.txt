@@ -15,14 +15,7 @@ add_library(wrapper SHARED
 set_property(TARGET wrapper PROPERTY POSITION_INDEPENDENT_CODE ON)
 target_link_libraries(wrapper ${CMAKE_DL_LIBS})
 
-add_executable(app
-    app_main.cpp
-    app.h
-    app.cpp
-    global.hpp
-    channel.hpp
-    channel.cpp)
-
-add_subdirectory("${simgld_SOURCE_DIR}/mc")
-add_subdirectory("${simgld_SOURCE_DIR}/sgld")
+add_subdirectory(${simgld_SOURCE_DIR}/app)
+add_subdirectory(${simgld_SOURCE_DIR}/mc)
+add_subdirectory(${simgld_SOURCE_DIR}/sgld)
 
