@@ -1,4 +1,7 @@
+LD_PRELOAD=./libwrapper.so valgrind --log-file=./valgrind_log.txt --undef-value-errors=no ./simgld ./mc ./app -- /usr/bin/ls . 
+LD_PRELOAD=./libwrapper.so valgrind --undef-value-errors=no ./simgld ./mc ./app -- /usr/bin/ls . 2>&1 | cat > ./valgrind_log.txt
 LD_PRELOAD=./libwrapper.so valgrind --trace-children=yes ./simgld ./mc ./app -- /usr/bin/ls . 2>&1 | cat > ./valgrind_log.txt
+LD_PRELOAD=./libwrapper.so valgrind --trace-children=yes --undef-value-errors=yes --track-origins=yes ./simgld ./mc ./app -- /usr/bin/ls . 2>&1 | cat > ./valgrind_log.txt
 
 g++ -Wall -g -static main.cpp ulexec.h ulexec.cpp util.hpp -o simg_ld
 
