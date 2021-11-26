@@ -53,21 +53,6 @@ add_executable(mc
     )
 find_library(LIBEVENT_LIBRARY NAMES event)    
 target_link_libraries(mc ${LIBEVENT_LIBRARY})
-# set(ENV${LD_PRELOAD} "/home/eazimi/projects/simgld/build/libwrapper.so")   
 
-add_executable(simgld
-    stack.h
-    stack.cpp
-    heap.hpp
-    user_space.h
-    user_space.cpp
-    app_loader.h
-    app_loader.cpp
-    trampoline.h
-    trampoline.cpp
-    trampoline_wrappers.hpp
-    switch_context.h
-    switch_context.cpp
-    main.cpp
-)
-target_link_libraries(simgld -static)
+# set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}")
+add_subdirectory(${simgld_SOURCE_DIR}/sgld)
