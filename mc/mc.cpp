@@ -7,9 +7,12 @@
 #include <sys/socket.h>
 #include <sys/types.h>
 #include <sys/wait.h>
+#include <asm/prctl.h> /* Definition of ARCH_* constants */
+#include <sys/syscall.h> /* Definition of SYS_* constants */
 
 #include "mc.h"
 #include "global.hpp"
+#include "trampoline_wrappers.hpp"
 
 MC::MC()
 {
@@ -20,6 +23,11 @@ MC::MC()
 
 void MC::run(char** argv)
 {
+  // if (syscall(SYS_arch_prctl, ARCH_GET_FS, &lhFsAddr) < 0) {
+  //   DLOG(ERROR, "Could not retrieve lower half's fs. Error: %s. Exiting...\n", strerror(errno));
+  //   return;
+  // }
+
   write_mmapped_ranges("mc-before_runRtld()-run()", getpid());
   setMemoryLayout();
 

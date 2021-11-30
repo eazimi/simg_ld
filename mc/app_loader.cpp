@@ -180,10 +180,10 @@ void AppLoader::runRtld(void* app_addr, vector<string> app_params, int socket_id
   // Load RTLD (ld.so)
   DynObjInfo ldso = load_lsdo(app_addr, (char*)LD_NAME);
 
-  if (syscall(SYS_arch_prctl, ARCH_GET_FS, &lhFsAddr) < 0) {
-    DLOG(ERROR, "Could not retrieve lower half's fs. Error: %s. Exiting...\n", strerror(errno));
-    return;
-  }
+  // if (syscall(SYS_arch_prctl, ARCH_GET_FS, &lhFsAddr) < 0) {
+  //   DLOG(ERROR, "Could not retrieve lower half's fs. Error: %s. Exiting...\n", strerror(errno));
+  //   return;
+  // }
 
   if (ldso.get_base_addr() == NULL || ldso.get_entry_point() == NULL) {
     DLOG(ERROR, "Error loading the runtime loader (%s). Exiting...\n", (char*)LD_NAME);

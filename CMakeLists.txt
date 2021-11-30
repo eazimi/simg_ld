@@ -18,4 +18,3 @@ target_link_libraries(wrapper ${CMAKE_DL_LIBS})
 add_subdirectory(${simgld_SOURCE_DIR}/app)
 add_subdirectory(${simgld_SOURCE_DIR}/mc)
 add_subdirectory(${simgld_SOURCE_DIR}/sgld)
-
